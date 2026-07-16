@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -57,6 +58,7 @@ fun ImportDialog(
         Surface(Modifier.fillMaxSize()) {
             when (state) {
                 is ImportUiState.Reading -> ReadingPanel(onDiscard)
+                is ImportUiState.Categorizing -> CategorizingPanel(state.progress, onDiscard)
                 is ImportUiState.Failed -> FailedPanel(state.message, onRetry, onDiscard)
                 is ImportUiState.Review -> ReviewPanel(state, onUpdate, onDelete, onConfirm, onDiscard)
                 is ImportUiState.Idle -> Unit
@@ -77,6 +79,33 @@ private fun ReadingPanel(onCancel: () -> Unit) {
             Text(
                 "Working out this bank's layout on your device.",
                 style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(onClick = onCancel) { Text("Cancel") }
+        }
+    }
+}
+
+/**
+ * The one slow step with a knowable end, so it gets a real progress bar rather than a spinner: the work is
+ * a fixed number of batches and the user is waiting on an on-device model, which is worth naming.
+ */
+@Composable
+private fun CategorizingPanel(progress: Float, onCancel: () -> Unit) {
+    Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text("Sorting into categories…", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                "The on-device AI is labelling your spending. Nothing leaves your phone.",
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             TextButton(onClick = onCancel) { Text("Cancel") }

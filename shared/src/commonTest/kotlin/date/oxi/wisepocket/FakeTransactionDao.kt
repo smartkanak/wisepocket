@@ -41,4 +41,10 @@ class FakeTransactionDao : TransactionDao {
     override suspend fun delete(id: Long) {
         rows.value = rows.value.filterNot { it.id == id }
     }
+
+    override suspend fun deleteAll() {
+        // nextId deliberately keeps counting, as AUTOINCREMENT does — the fake would otherwise disagree
+        // with the real schema about whether ids can come back.
+        rows.value = emptyList()
+    }
 }

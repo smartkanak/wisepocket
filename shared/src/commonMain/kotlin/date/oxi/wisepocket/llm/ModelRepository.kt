@@ -17,6 +17,20 @@ sealed interface ModelStatus {
     data object Checking : ModelStatus
     data class Downloading(val downloadedBytes: Long, val totalBytes: Long?) : ModelStatus
     data class Ready(val path: String) : ModelStatus
+
+    /**
+     * No model on disk, and nothing went wrong — the normal state of a fresh install.
+     *
+     * Distinct from [Failed] because conflating them put a developer's sentence in front of every new
+     * user: the first-run screen greeted people with "Model not found at /data/user/0/…/models/
+     * qwen2.5-1.5b-instruct-q4_k_m.gguf", since not-yet-downloaded and download-broke were the same case
+     * and only the broken one has anything to say.
+     *
+     * @param path where a side-loaded GGUF would go — for the log and for development, not for the UI.
+     */
+    data class Absent(val path: String) : ModelStatus
+
+    /** Something went wrong: the network, the disk, a bad URL, a wrong token. */
     data class Failed(val message: String) : ModelStatus
 }
 
@@ -53,11 +67,7 @@ class ModelRepository(
             return@flow
         }
         if (downloadUrl == null) {
-            emit(
-                ModelStatus.Failed(
-                    "Model not found at $target. Side-load a GGUF model or paste a download URL below.",
-                ),
-            )
+            emit(ModelStatus.Absent(target))
             return@flow
         }
         val client = httpClientFactory()

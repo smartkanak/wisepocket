@@ -3,11 +3,13 @@ package date.oxi.wisepocket.transactions
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -23,7 +25,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import date.oxi.wisepocket.model.Category
 import date.oxi.wisepocket.model.Transaction
+import date.oxi.wisepocket.model.categoryOrNull
 import date.oxi.wisepocket.model.formatSignedMoney
 import kotlinx.datetime.LocalDate
 
@@ -61,6 +65,9 @@ fun TransactionCard(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                tx.categoryOrNull?.let {
+                    Text(it.emoji, Modifier.padding(end = 10.dp), style = MaterialTheme.typography.titleMedium)
+                }
                 Column(Modifier.weight(1f)) {
                     Text(
                         tx.merchant.ifBlank { "(no description)" },
@@ -69,7 +76,7 @@ fun TransactionCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        tx.date.toString(),
+                        listOfNotNull(tx.date.toString(), tx.categoryOrNull?.label).joinToString(" · "),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -147,6 +154,39 @@ private fun Editor(tx: Transaction, onUpdate: (Transaction) -> Unit) {
                 isError = runCatching { LocalDate.parse(dateText) }.getOrNull() == null,
                 modifier = Modifier.weight(1f),
             )
+        }
+        CategoryPicker(tx, onUpdate)
+    }
+}
+
+/**
+ * Sets the row's [Category].
+ *
+ * Categories come from a model that guesses, so correcting one has to be as easy as reading it — and the
+ * chips are the closed set itself, which means a hand-fixed row lands in exactly the same bucket the model
+ * would have used. A text field here would reintroduce the free-form labels the whole design rules out.
+ */
+@Composable
+private fun CategoryPicker(tx: Transaction, onUpdate: (Transaction) -> Unit) {
+    val selected = tx.categoryOrNull
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            "Category",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Category.entries.forEach { category ->
+                FilterChip(
+                    selected = category == selected,
+                    // Tapping the selected chip clears it: "I don't know" is a legitimate answer, and
+                    // Insights reports uncategorised spending rather than hiding it.
+                    onClick = {
+                        onUpdate(tx.copy(category = if (category == selected) null else category.name))
+                    },
+                    label = { Text("${category.emoji} ${category.label}") },
+                )
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 package date.oxi.wisepocket.statement
 
 import date.oxi.wisepocket.llm.LlmEngine
+import date.oxi.wisepocket.llm.Sampling
 import date.oxi.wisepocket.statement.Amounts.SignConvention
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -43,7 +44,12 @@ class LlmProfiler(private val engine: LlmEngine) {
 
         val started = TimeSource.Monotonic.markNow()
         val reply = StringBuilder()
-        engine.generate(system = systemPrompt(options), context = sample.joinToString("\n"), user = USER)
+        engine.generate(
+            system = systemPrompt(options),
+            context = sample.joinToString("\n"),
+            user = USER,
+            sampling = Sampling.PRECISE,
+        )
             .collect { reply.append(it) }
         println("$LOG LLM profile took ${started.elapsedNow()}: ${reply.toString().take(LOG_PREVIEW_CHARS)}")
 

@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,8 +37,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import date.oxi.wisepocket.llm.ModelStatus
 import org.koin.compose.viewmodel.koinViewModel
 
+/**
+ * Chat needs two things: a model to answer with, and transactions to answer about.
+ *
+ * The order of those checks used to be the wrong way round, and it made the app incoherent. The screen
+ * returned early on "no transactions yet" — so the model download panel, which lived below, was
+ * unreachable until you had imported something, while importing without the model produced no categories.
+ * The way out of the model-less state was locked behind the state that needed the model.
+ *
+ * Now it reports whichever thing is actually missing, and the model isn't obtained here at all: it's app
+ * infrastructure, so setup is [onSetUpModel]'s job and this screen just points at it.
+ */
 @Composable
-fun ChatScreen(modifier: Modifier = Modifier) {
+fun ChatScreen(onSetUpModel: () -> Unit, modifier: Modifier = Modifier) {
     val vm: ChatViewModel = koinViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
 
@@ -53,36 +65,39 @@ fun ChatScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.padding(vertical = 8.dp),
         )
 
-        if (!state.hasTransactions) {
-            NothingToTalkAbout(Modifier.weight(1f))
-            return@Column
-        }
+        when {
+            state.modelStatus !is ModelStatus.Ready -> Missing(
+                text = "Chat runs on an on-device AI, and it isn't set up yet.",
+                action = "Set up" to onSetUpModel,
+                modifier = Modifier.weight(1f),
+            )
 
-        when (val status = state.modelStatus) {
-            is ModelStatus.Ready -> ChatBody(
-                state = state,
-                onSend = vm::send,
+            // Nothing to ground an answer in — better to say so than to invent one.
+            !state.hasTransactions -> Missing(
+                text = "Import a statement first — then ask me anything about your spending.",
+                action = null,
                 modifier = Modifier.weight(1f),
             )
-            else -> ModelStatusPanel(
-                status = status,
-                onDownload = vm::startDownload,
-                modifier = Modifier.weight(1f),
-            )
+
+            else -> ChatBody(state = state, onSend = vm::send, modifier = Modifier.weight(1f))
         }
     }
 }
 
-/** No transactions means nothing to ground an answer in — better to say so than to invent one. */
 @Composable
-private fun NothingToTalkAbout(modifier: Modifier = Modifier) {
+private fun Missing(text: String, action: Pair<String, () -> Unit>?, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-        Text(
-            "Import a statement first — then ask me anything about your spending.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            action?.let { (label, onClick) ->
+                Button(onClick = onClick, modifier = Modifier.padding(top = 12.dp)) { Text(label) }
+            }
+        }
     }
 }
 
@@ -170,89 +185,3 @@ private fun MessageInput(enabled: Boolean, onSend: (String) -> Unit) {
         }
     }
 }
-
-@Composable
-private fun ModelStatusPanel(
-    status: ModelStatus,
-    onDownload: (url: String, token: String?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier.fillMaxWidth().padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            when (status) {
-                is ModelStatus.Checking -> {
-                    CircularProgressIndicator()
-                    Text("Preparing on-device model…", Modifier.padding(top = 12.dp))
-                }
-                is ModelStatus.Downloading -> {
-                    val total = status.totalBytes
-                    if (total != null && total > 0) {
-                        LinearProgressIndicator(
-                            progress = { status.downloadedBytes.toFloat() / total.toFloat() },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
-                        )
-                    } else {
-                        LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 32.dp))
-                    }
-                    Text(
-                        "Downloading model… ${status.downloadedBytes / (1024 * 1024)} MB",
-                        Modifier.padding(top = 12.dp),
-                    )
-                }
-                is ModelStatus.Failed -> DownloadPanel(message = status.message, onDownload = onDownload)
-                is ModelStatus.Ready -> {}
-            }
-        }
-    }
-}
-
-/** Shown when no model is present: explains the situation and lets the user fetch one by URL. */
-@Composable
-private fun DownloadPanel(
-    message: String,
-    onDownload: (url: String, token: String?) -> Unit,
-) {
-    var url by remember { mutableStateOf(DEFAULT_MODEL_URL) }
-    var token by remember { mutableStateOf("") }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            message,
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = 16.dp),
-        )
-        OutlinedTextField(
-            value = url,
-            onValueChange = { url = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Model GGUF URL") },
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = token,
-            onValueChange = { token = it },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            label = { Text("Auth token (optional, for gated hosts)") },
-            singleLine = true,
-        )
-        TextButton(
-            onClick = { onDownload(url, token) },
-            enabled = url.isNotBlank(),
-            modifier = Modifier.padding(top = 8.dp),
-        ) {
-            Text("Download model")
-        }
-        Text(
-            "The default is Qwen2.5-1.5B-Instruct (Apache-2.0, no login needed) as a GGUF file (~1 GB). " +
-                "Or paste any direct GGUF URL. The token field is only needed for license-gated hosts.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 12.dp),
-        )
-    }
-}
-
-private const val DEFAULT_MODEL_URL =
-    "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"

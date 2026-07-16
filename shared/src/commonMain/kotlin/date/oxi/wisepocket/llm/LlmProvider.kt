@@ -20,7 +20,21 @@ private const val LOG = "WP-LLM"
  * engine wouldn't be a second model — it would be the same native context being loaded and shut down
  * underneath the first. And loading a ~1 GB GGUF twice is not something to do by accident.
  */
-class LlmProvider(private val repository: ModelRepository) {
+/**
+ * What a screen needs from the model: what state it's in, and a way to get it.
+ *
+ * An interface rather than the concrete [LlmProvider] because [LlmProvider] resolves a real path through
+ * `modelsDir()`, which is an `expect` with no filesystem behind it in `commonTest`. Without this seam the
+ * catch-up categorisation — the thing that was missing entirely — could only be checked by hand on a device
+ * with a gigabyte already downloaded, which is to say: not checked.
+ */
+interface ModelGateway {
+    val status: StateFlow<ModelStatus>
+
+    suspend fun ensure(downloadUrl: String? = null, authToken: String? = null)
+}
+
+class LlmProvider(private val repository: ModelRepository) : ModelGateway {
 
     companion object {
         /** Default model: Qwen2.5-1.5B-Instruct, Apache-2.0 and ungated, so no token is needed. */
@@ -28,7 +42,7 @@ class LlmProvider(private val repository: ModelRepository) {
     }
 
     private val _status = MutableStateFlow<ModelStatus>(ModelStatus.Checking)
-    val status: StateFlow<ModelStatus> = _status.asStateFlow()
+    override val status: StateFlow<ModelStatus> = _status.asStateFlow()
 
     // Written under loadLock but read from anywhere (chat send, import), so publication has to be explicit.
     @Volatile
@@ -44,7 +58,7 @@ class LlmProvider(private val repository: ModelRepository) {
      *
      * @param downloadUrl direct URL to a GGUF; null means "only check what's already on disk".
      */
-    suspend fun ensure(downloadUrl: String? = null, authToken: String? = null) {
+    override suspend fun ensure(downloadUrl: String?, authToken: String?) {
         // Already loaded: nothing to do, and re-running the check would only republish the same status.
         if (engine != null) return
 
@@ -89,9 +103,14 @@ private class SerializedLlmEngine(private val delegate: LlmEngine) : LlmEngine {
 
     override suspend fun initialize() = delegate.initialize()
 
-    override fun generate(system: String, context: String, user: String): Flow<String> = flow {
+    override fun generate(
+        system: String,
+        context: String,
+        user: String,
+        sampling: Sampling,
+    ): Flow<String> = flow {
         generateLock.withLock {
-            delegate.generate(system, context, user).collect { emit(it) }
+            delegate.generate(system, context, user, sampling).collect { emit(it) }
         }
     }
 }

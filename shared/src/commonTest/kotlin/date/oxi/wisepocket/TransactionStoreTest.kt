@@ -75,6 +75,34 @@ class TransactionStoreTest {
     }
 
     @Test
+    fun clearRemovesEverything() = runTest(UnconfinedTestDispatcher()) {
+        val store = store()
+        store.addAll(listOf(row("a", 1, -10.0), row("b", 2, -20.0)))
+        store.addBlank(LocalDate(2026, 3, 5))
+
+        store.clear()
+
+        assertEquals(emptyList(), store.transactions.value)
+    }
+
+    @Test
+    fun idsAreNotReusedAfterClearing() = runTest(UnconfinedTestDispatcher()) {
+        val store = store()
+        store.addAll(listOf(row("a", 1, -10.0)))
+        val firstId = store.transactions.value.single().id
+
+        store.clear()
+        store.addAll(listOf(row("b", 2, -20.0)))
+
+        // AUTOINCREMENT keeps counting past a wipe. It matters: a screen holding a stale id mid-delete
+        // should resolve to nothing, not to whichever row inherited the number.
+        assertTrue(
+            store.transactions.value.single().id != firstId,
+            "id $firstId came back after clear()",
+        )
+    }
+
+    @Test
     fun blankRowIsAddedAtTheTopAndIdentifiable() = runTest(UnconfinedTestDispatcher()) {
         val store = store()
         store.addAll(listOf(row("a", 1, -10.0)))

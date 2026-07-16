@@ -50,6 +50,18 @@ class TransactionStore(
         scope.launch { dao.update(transaction.toEntity()) }
     }
 
+    /**
+     * Deletes everything.
+     *
+     * This existed once, for test isolation, and was removed as soon as a per-test instance made it
+     * pointless — a method the product doesn't need shouldn't be reachable from the product. It's back
+     * because there is now a real reason for it: starting a month over. Same code, different justification,
+     * and only the second one is worth keeping.
+     */
+    fun clear() {
+        scope.launch { dao.deleteAll() }
+    }
+
     fun remove(id: String) {
         val rowId = id.toLongOrNull() ?: return
         scope.launch { dao.delete(rowId) }

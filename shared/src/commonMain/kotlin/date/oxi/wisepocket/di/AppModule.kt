@@ -2,11 +2,14 @@ package date.oxi.wisepocket.di
 
 import date.oxi.wisepocket.chat.ChatViewModel
 import date.oxi.wisepocket.data.WisePocketDatabase
+import date.oxi.wisepocket.insights.Categorizer
 import date.oxi.wisepocket.llm.LlmProvider
 import date.oxi.wisepocket.llm.ModelRepository
 import date.oxi.wisepocket.review.ImportViewModel
 import date.oxi.wisepocket.statement.StatementImporter
 import date.oxi.wisepocket.transactions.TransactionStore
+import date.oxi.wisepocket.transactions.TransactionsViewModel
+import date.oxi.wisepocket.wrapped.WrappedViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -41,6 +44,14 @@ val appModule = module {
     // is ready gets the LLM even though the importer was built before it.
     factory { StatementImporter(engineProvider = get<LlmProvider>()::engineOrNull) }
 
+    // Same lambda-not-engine reasoning as the importer above, and for the same reason: categorising is
+    // part of an import, and the model may have finished loading only after the screen was built.
+    factory { Categorizer(engineProvider = get<LlmProvider>()::engineOrNull) }
+
+    viewModel { TransactionsViewModel(store = get(), categorizer = get(), model = get<LlmProvider>()) }
+    viewModel { WrappedViewModel(transactionStore = get()) }
     viewModel { ChatViewModel(llm = get(), transactionStore = get()) }
-    viewModel { ImportViewModel(importer = get(), transactionStore = get(), llm = get()) }
+    viewModel {
+        ImportViewModel(importer = get(), categorizer = get(), transactionStore = get(), llm = get())
+    }
 }

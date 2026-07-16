@@ -27,4 +27,14 @@ interface TransactionDao {
 
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun delete(id: Long)
+
+    /**
+     * Empties the table.
+     *
+     * Note what this does *not* reset: `AUTOINCREMENT` keeps counting, so ids are never reused. That's
+     * worth keeping — a stale id held by a screen mid-delete then resolves to nothing rather than to
+     * somebody else's row.
+     */
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAll()
 }

@@ -97,18 +97,20 @@ class ArchitectureTest {
     }
 
     /**
-     * **The parsing pipeline stays UI-free.** `statement` and `model` are pure Kotlin.
+     * **The parts that compute stay UI-free.** `statement`, `model` and `insights` are pure Kotlin.
      *
      * That purity is why the whole profile-detection story is unit-testable without a device, which is the
-     * only reason the reconciliation rules are trustworthy at all. (`pdf` is deliberately not in this list:
-     * `PdfPicker` is a @Composable by nature.)
+     * only reason the reconciliation rules are trustworthy at all. `insights` is held to the same line for
+     * the same reason: every figure the app states about someone's money is computed there, and the Wrapped
+     * screens are a rendering of it — the moment a total can only be checked by looking at a screen, it
+     * stops being checked. (`pdf` is deliberately not in this list: `PdfPicker` is a @Composable by nature.)
      */
     @Test
-    fun theParsingPipelineDoesNotDependOnCompose() {
+    fun theComputingPackagesDoNotDependOnCompose() {
         val pure = production().files
-            .filter { it.packagee?.name?.matches(Regex(""".*\.(statement|model)$""")) == true }
+            .filter { it.packagee?.name?.matches(Regex(""".*\.(statement|model|insights)$""")) == true }
 
-        kotlinAssertTrue(pure.isNotEmpty(), "matched no statement/model files — the rule checks nothing")
+        kotlinAssertTrue(pure.isNotEmpty(), "matched no statement/model/insights files — the rule checks nothing")
 
         val offenders = pure
             .filter { file -> file.imports.any { it.name.startsWith("androidx.compose") } }
@@ -116,7 +118,29 @@ class ArchitectureTest {
 
         assertEquals(
             emptyList(), offenders,
-            "statement/ and model/ must stay free of Compose — they are the part we can test without a device.",
+            "statement/, model/ and insights/ must stay free of Compose — they are the part we can test " +
+                "without a device.",
+        )
+    }
+
+    /**
+     * **Categories are the closed [date.oxi.wisepocket.model.Category] set.**
+     *
+     * The one failure that would quietly break every total: a free-form label. The same supermarket coming
+     * back as "Groceries" here and "Lebensmittel" there splits its own subtotal in two, and nothing about
+     * the app would look broken — the sums would just be wrong. So no production code may write a category
+     * as a literal; it goes through the enum, whose names the model's answers are validated against.
+     */
+    @Test
+    fun categoriesAreNeverWrittenAsStringLiterals() {
+        val offenders = production().files
+            .filterNot { it.name == "Category" }
+            .filter { file -> CATEGORY_LITERAL.containsMatchIn(codeOf(file.text)) }
+            .map { it.path.substringAfterLast("WisePocket/") }
+
+        assertEquals(
+            emptyList(), offenders,
+            "Assign categories via the Category enum, not a string literal — free-form labels don't add up.",
         )
     }
 
@@ -144,5 +168,10 @@ class ArchitectureTest {
         production().classes()
             .filter { klass -> klass.parents().any { it.name == "ViewModel" } }
             .assertTrue { it.name.endsWith("ViewModel") }
+    }
+
+    private companion object {
+        /** `category = "…"` — the assignment, not any mention of the word, so KDoc and labels stay legal. */
+        val CATEGORY_LITERAL = Regex("""category\s*=\s*"""")
     }
 }

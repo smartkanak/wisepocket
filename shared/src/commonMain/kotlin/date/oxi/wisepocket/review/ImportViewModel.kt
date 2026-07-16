@@ -2,6 +2,7 @@ package date.oxi.wisepocket.review
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import date.oxi.wisepocket.insights.Categorizer
 import date.oxi.wisepocket.llm.LlmProvider
 import date.oxi.wisepocket.model.Transaction
 import date.oxi.wisepocket.statement.ImportResult
@@ -19,6 +20,15 @@ sealed interface ImportUiState {
     data object Idle : ImportUiState
     data object Reading : ImportUiState
     data class Failed(val message: String) : ImportUiState
+
+    /**
+     * Labelling the rows with the on-device model. Its own step, and blocking, on purpose: this takes
+     * seconds, and letting the user start reviewing rows that then relabel themselves underneath them
+     * would undermine the one thing the review step is for.
+     *
+     * @param progress 0..1 across the batches.
+     */
+    data class Categorizing(val progress: Float) : ImportUiState
 
     /** Parsed and ready for the user to check. [rows] is editable — the parser's output is a proposal. */
     data class Review(
@@ -44,8 +54,9 @@ class ImportViewModel(
     // The importer is built around the app's single engine (see appModule), so a statement that can't
     // self-verify gets the model's judgement on its conventions instead of a hardcoded guess.
     private val importer: StatementImporter,
+    private val categorizer: Categorizer,
     private val transactionStore: TransactionStore,
-    llm: LlmProvider,
+    private val llm: LlmProvider,
 ) : ViewModel() {
 
     init {
@@ -63,7 +74,7 @@ class ImportViewModel(
             _state.value = when (val result = importer.import(bytes)) {
                 is ImportResult.Success -> ImportUiState.Review(
                     profile = result.result.profile,
-                    rows = result.result.transactions,
+                    rows = categorize(result.result.transactions),
                     skippedLines = result.result.skippedLines,
                 )
 
@@ -74,6 +85,26 @@ class ImportViewModel(
                 is ImportResult.Failed -> ImportUiState.Failed(result.message)
             }
         }
+    }
+
+    /**
+     * Labels the parsed rows, keeping each row's parse metadata (confidence, source line) attached.
+     *
+     * Categories ride along on [ParsedTransaction.transaction] rather than replacing the list, because
+     * confidence is about *the parse* — a category the model guessed badly is a wrong label on a
+     * correctly-read row, and conflating the two would flag rows whose numbers are fine.
+     */
+    private suspend fun categorize(rows: List<ParsedTransaction>): List<ParsedTransaction> {
+        _state.value = ImportUiState.Categorizing(progress = 0f)
+        // Wait for the engine the init block started. Without this, a PDF picked before the model finished
+        // loading would come back silently uncategorised — the race would look exactly like "no model".
+        // Idempotent, and returns promptly when there's genuinely nothing to load.
+        llm.ensure()
+        val labelled = categorizer.categorize(
+            transactions = rows.map { it.transaction },
+            onProgress = { _state.value = ImportUiState.Categorizing(progress = it) },
+        )
+        return rows.zip(labelled) { row, transaction -> row.copy(transaction = transaction) }
     }
 
     fun updateRow(index: Int, transaction: Transaction) = editRows { rows ->
