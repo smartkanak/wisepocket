@@ -50,9 +50,9 @@ fun OnboardingScreen(
     firstRun: Boolean = true,
 ) {
     Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(28.dp),
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(36.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
     ) {
         // The wordmark stands in for both the emoji and the name on first run: this is the one screen whose
         // job is to say what the app *is*, and a logo does that better than a 👛 and a line of body type.

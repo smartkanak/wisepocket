@@ -15,7 +15,7 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 	<key>UIStatusBarStyle</key>
-	<string>UIStatusBarStyleLightContent</string>
+	<string>UIStatusBarStyleDarkContent</string>
 	<!-- Opens into the brand blue rather than flashing white. The counterpart of android:windowBackground. -->
 	<key>UILaunchScreen</key>
 	<dict>

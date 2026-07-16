@@ -1,28 +1,43 @@
 package date.oxi.wisepocket.chat
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,6 +46,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,13 +73,12 @@ fun ChatScreen(onSetUpModel: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .safeContentPadding()
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 20.dp),
     ) {
         Text(
-            text = "WisePocket",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(vertical = 8.dp),
+            text = "AI Assistant",
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(vertical = 12.dp),
         )
 
         when {
@@ -133,7 +149,11 @@ private fun ChatBody(
             items(state.messages) { msg -> MessageBubble(msg) }
         }
 
-        MessageInput(enabled = !state.isGenerating, onSend = onSend)
+        // ime ∪ navigationBars, not just imePadding: the frame no longer pads the bottom, so the input has to
+        // clear the navigation bar when the keyboard is down and the keyboard when it's up. union takes the
+        // larger of the two, so the keyboard (which already spans the nav-bar area) doesn't get it added twice.
+        val bottomInset = Modifier.windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
+        MessageInput(enabled = !state.isGenerating, onSend = onSend, modifier = bottomInset)
     }
 }
 
@@ -149,28 +169,63 @@ private fun ChatBody(
 private fun MessageBubble(msg: ChatMessage) {
     val isUser = msg.role == ChatMessage.Role.USER
     val scheme = MaterialTheme.colorScheme
+    val bubbleShape = if (isUser) {
+        RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 4.dp)
+    } else {
+        RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 4.dp, bottomEnd = 16.dp)
+    }
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
     ) {
         Card(
             colors = CardDefaults.cardColors(
-                containerColor = if (isUser) scheme.primaryContainer else scheme.surfaceContainerHigh,
-                contentColor = if (isUser) scheme.onPrimaryContainer else scheme.onSurface,
+                containerColor = if (isUser) scheme.primary else scheme.surfaceContainer,
+                contentColor = if (isUser) scheme.onPrimary else scheme.onSurface,
             ),
-            shape = MaterialTheme.shapes.medium,
+            shape = bubbleShape,
+            modifier = Modifier.widthIn(max = 280.dp),
         ) {
-            Text(
-                text = msg.text.ifEmpty { "…" },
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                style = MaterialTheme.typography.bodyLarge,
+            // No text yet means the model is still thinking — animate three dots rather than sit on a static
+            // "…", so it's clear the answer is on its way and nothing has stalled.
+            if (msg.text.isEmpty()) {
+                TypingIndicator(Modifier.padding(horizontal = 14.dp, vertical = 14.dp))
+            } else {
+                Text(
+                    text = msg.text,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Three dots that fade in and out in sequence — the "assistant is typing" convention. Each dot lags the last
+ * by a beat, so the group reads as a wave rather than three lights blinking in unison.
+ */
+@Composable
+private fun TypingIndicator(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "typing")
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        repeat(3) { index ->
+            val alpha by transition.animateFloat(
+                initialValue = 0.2f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 500, delayMillis = index * 160, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+                label = "dot$index",
             )
+            Box(Modifier.size(7.dp).clip(CircleShape).background(LocalContentColor.current.copy(alpha = alpha)))
         }
     }
 }
 
 @Composable
-private fun MessageInput(enabled: Boolean, onSend: (String) -> Unit) {
+private fun MessageInput(enabled: Boolean, onSend: (String) -> Unit, modifier: Modifier = Modifier) {
     var text by remember { mutableStateOf("") }
     val submit = {
         if (enabled && text.isNotBlank()) {
@@ -179,19 +234,28 @@ private fun MessageInput(enabled: Boolean, onSend: (String) -> Unit) {
         }
     }
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         OutlinedTextField(
             value = text,
             onValueChange = { text = it },
             modifier = Modifier.weight(1f),
-            placeholder = { Text("Ask about your money…") },
+            placeholder = { Text("Ask about your spending…") },
             enabled = enabled,
+            shape = MaterialTheme.shapes.large,
+            singleLine = true,
             keyboardActions = KeyboardActions(onSend = { submit() }),
         )
-        TextButton(onClick = submit, enabled = enabled && text.isNotBlank()) {
-            Text("Send")
+        Button(
+            onClick = submit,
+            enabled = enabled && text.isNotBlank(),
+            shape = CircleShape,
+            contentPadding = PaddingValues(0.dp),
+            modifier = Modifier.size(48.dp)
+        ) {
+            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
         }
     }
 }

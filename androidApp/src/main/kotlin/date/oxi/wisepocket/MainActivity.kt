@@ -11,14 +11,14 @@ import androidx.compose.ui.tooling.preview.Preview
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        // `dark`, not the default `auto`. Auto reads the *system's* light/dark setting to decide whether
+        // `light`, not the default `auto`. Auto reads the *system's* light/dark setting to decide whether
         // the clock and battery icons are drawn dark or light — which is right for an app that follows the
-        // system, and wrong for this one: the canvas is a deep blue whatever the phone thinks. Left on
-        // auto, a light-mode phone drew a black clock onto the blue, which the build log has no way to
-        // notice. Transparent scrims, because the app's own colour should reach the edges.
+        // system, and wrong for this one: the canvas is light off-white whatever the phone thinks. Left on
+        // auto or dark, the phone drew a white clock onto the off-white, making it invisible.
+        // Transparent scrims, because the app's own color should reach the edges.
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
 

@@ -1,21 +1,40 @@
 package date.oxi.wisepocket.transactions
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -30,12 +49,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import date.oxi.wisepocket.llm.ModelStatus
 import date.oxi.wisepocket.model.Transaction
 import date.oxi.wisepocket.model.formatMoney
+import date.oxi.wisepocket.ui.theme.Mono
 
 /**
  * The app's home: your transactions. Everything here is editable — tap a row to change it, add one by
@@ -58,43 +80,73 @@ fun TransactionsScreen(
     val transactions = state.transactions
     var confirmDeleteAll by rememberSaveable { mutableStateOf(false) }
 
-    Column(modifier.fillMaxSize()) {
-        SummaryHeader(transactions, onDeleteAll = { confirmDeleteAll = true })
-        StatusRow(state, onCategorize = onCategorize, onSetUpModel = onSetUpModel)
-        HorizontalDivider()
+    Box(modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            SummaryHeader(transactions, onOpenWrapped = onOpenWrapped, onDeleteAll = { confirmDeleteAll = true })
+            StatusRow(state, onCategorize = onCategorize, onSetUpModel = onSetUpModel)
+            HorizontalDivider()
 
-        if (transactions.isEmpty()) {
-            EmptyState(onImport = onImport, onAdd = onAdd)
-            return@Column
-        }
+            if (transactions.isEmpty()) {
+                EmptyState(onImport = onImport, onAdd = onAdd)
+                return@Column
+            }
 
-        LazyColumn(
-            Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(transactions, key = { it.id }) { tx ->
-                TransactionCard(
-                    transaction = tx,
-                    onUpdate = onUpdate,
-                    onDelete = { onDelete(tx.id) },
-                    // A row the user just created starts open — it's blank, so it needs filling in.
-                    initiallyExpanded = tx.id == newlyAddedId,
-                )
+            // The nav-bar inset is spent here, as content padding, not baked into the frame — so the list
+            // reaches the bottom edge and the last row just scrolls clear of the navigation bar, instead of
+            // the whole list ending at a fixed dead band above it.
+            val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            LazyColumn(
+                Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 64.dp + navBottom),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(transactions, key = { it.id }) { tx ->
+                    TransactionCard(
+                        transaction = tx,
+                        onUpdate = onUpdate,
+                        onDelete = { onDelete(tx.id) },
+                        // A row the user just created starts open — it's blank, so it needs filling in.
+                        initiallyExpanded = tx.id == newlyAddedId,
+                    )
+                }
             }
         }
 
-        HorizontalDivider()
-        Row(
-            Modifier.fillMaxWidth().padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // Short labels: "Add transaction" wraps to two lines at this width on a phone.
-            OutlinedButton(onClick = onAdd, modifier = Modifier.weight(1f)) { Text("Add") }
-            OutlinedButton(onClick = onImport, modifier = Modifier.weight(1f)) { Text("Import") }
-            // Wrapped is a thing you go and look at and then leave, so it's launched from here rather than
-            // sitting in the tab bar pretending to be a place you live.
-            Button(onClick = onOpenWrapped, modifier = Modifier.weight(1f)) { Text("Wrapped") }
+        if (transactions.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FloatingActionButton(
+                    onClick = onImport,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(48.dp),
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.DocumentScanner,
+                        contentDescription = "Import PDF"
+                    )
+                }
+                ExtendedFloatingActionButton(
+                    onClick = onAdd,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = "Add"
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Add", style = MaterialTheme.typography.labelLarge)
+                }
+            }
         }
     }
 
@@ -152,7 +204,10 @@ private fun StatusRow(state: TransactionsUiState, onCategorize: () -> Unit, onSe
     val progress = state.categorizingProgress
     when {
         progress != null -> Banner {
-            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape)
+            )
             Text(
                 "Sorting your spending into categories…",
                 style = MaterialTheme.typography.bodySmall,
@@ -161,7 +216,7 @@ private fun StatusRow(state: TransactionsUiState, onCategorize: () -> Unit, onSe
         }
 
         state.modelStatus is ModelStatus.Downloading -> Banner {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape))
             Text(
                 "Downloading the on-device AI…",
                 style = MaterialTheme.typography.bodySmall,
@@ -192,41 +247,76 @@ private fun StatusRow(state: TransactionsUiState, onCategorize: () -> Unit, onSe
 
 @Composable
 private fun Banner(content: @Composable ColumnScope.() -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.secondaryContainer) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), content = content)
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
+        shape = MaterialTheme.shapes.medium,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), content = content)
     }
 }
 
 @Composable
 private fun Action(text: String, button: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-        TextButton(onClick = onClick) { Text(button) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text("⚡", style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Button(
+            onClick = onClick,
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+            shape = MaterialTheme.shapes.small,
+            modifier = Modifier.height(32.dp)
+        ) {
+            Text(button, style = MaterialTheme.typography.labelMedium)
+        }
     }
 }
 
 @Composable
-private fun SummaryHeader(transactions: List<Transaction>, onDeleteAll: () -> Unit) {
+private fun SummaryHeader(
+    transactions: List<Transaction>,
+    onOpenWrapped: () -> Unit,
+    onDeleteAll: () -> Unit
+) {
     val spent = transactions.filter { it.amount < 0 }.sumOf { -it.amount }
     val income = transactions.filter { it.amount > 0 }.sumOf { it.amount }
     val net = income - spent
 
-    // Deeper than the canvas, not lighter: the header is the thing the list scrolls *over*, so it reads as
-    // set back rather than raised.
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+    ) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Your transactions",
-                    style = MaterialTheme.typography.titleLarge,
+                    "Transactions",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                     modifier = Modifier.weight(1f),
                 )
-                // Tucked into a menu, not put next to "Add": an irreversible wipe must not sit at the same
-                // weight as the everyday buttons, where a thumb finds it by accident.
+                TextButton(
+                    onClick = onOpenWrapped,
+                    modifier = Modifier.padding(end = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CardGiftcard,
+                        contentDescription = "Wrapped",
+                        modifier = Modifier.padding(end = 6.dp)
+                    )
+                    Text("Wrapped", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                }
                 if (transactions.isNotEmpty()) OverflowMenu(onDeleteAll)
             }
-            // Both ends come from one pass over a list we've already checked is non-empty, so there is no
-            // nullable case left to force with `!!`.
             val range = transactions.map { it.date }.sorted()
                 .let { dates -> dates.firstOrNull()?.let { " · $it – ${dates.last()}" } }
                 .orEmpty()
@@ -235,11 +325,9 @@ private fun SummaryHeader(transactions: List<Transaction>, onDeleteAll: () -> Un
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Figure("Spent", formatMoney(spent), Modifier.weight(1f))
                 Figure("Income", formatMoney(income), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary)
-                // Saved and overspent are the same figure with opposite meanings, so colour is the only
-                // thing that tells them apart at a glance — the label is read second, if at all.
                 Figure(
                     label = if (net >= 0) "Saved" else "Overspent",
                     value = formatMoney(if (net >= 0) net else -net),
@@ -270,7 +358,6 @@ private fun OverflowMenu(onDeleteAll: () -> Unit) {
     }
 }
 
-/** One figure in the header. [color] defaults to plain body white — spending needs no colour to explain it. */
 @Composable
 private fun Figure(
     label: String,
@@ -278,13 +365,26 @@ private fun Figure(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.onSurface,
 ) {
-    Column(modifier) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(value, style = MaterialTheme.typography.titleMedium, color = color)
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.medium,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyMedium.merge(Mono),
+                color = color,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
@@ -293,17 +393,49 @@ private fun EmptyState(onImport: () -> Unit, onAdd: () -> Unit) {
     Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth(0.85f)
         ) {
-            Text("No transactions yet", style = MaterialTheme.typography.titleMedium)
+            Surface(
+                modifier = Modifier.padding(bottom = 8.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = CircleShape,
+            ) {
+                Box(modifier = Modifier.padding(24.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.CreditCard,
+                        contentDescription = "Transactions list empty",
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            Text(
+                "No transactions yet",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
             Text(
                 "Import a bank statement PDF to get started. It's read on your device — nothing is uploaded.",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = onImport) { Text("Import PDF") }
-            OutlinedButton(onClick = onAdd) { Text("Add one manually") }
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = onImport,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Text("Import PDF Statement")
+            }
+            OutlinedButton(
+                onClick = onAdd,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Text("Add transaction manually")
+            }
         }
     }
 }

@@ -269,12 +269,12 @@ private fun Dots(count: Int, selected: Int, modifier: Modifier = Modifier) {
 private fun palette(page: Int): Pair<Color, Color> = PALETTE[page % PALETTE.size]
 
 private val PALETTE = listOf(
-    Color(0xFF3A0CA3) to Color(0xFF1B1BD1), // violet → brand
+    Color(0xFF3A0CA3) to Color(0xFF4D62FF), // violet → electric brand
     Color(0xFF0353A4) to Color(0xFF012A4A), // azure → navy
-    Color(0xFF6D28D9) to Color(0xFF2410A8), // purple → indigo
+    Color(0xFF6D28D9) to Color(0xFF1D2138), // purple → slate
     Color(0xFF0E7490) to Color(0xFF0A2A5E), // teal → deep blue
     Color(0xFFA21CAF) to Color(0xFF4C1D95), // magenta → violet
-    Color(0xFF1B1BD1) to Color(0xFF0A0A4F), // brand → midnight
+    Color(0xFF4D62FF) to Color(0xFF08090F), // electric brand → obsidian midnight
 )
 
 private const val SUBTLE = 0.75f

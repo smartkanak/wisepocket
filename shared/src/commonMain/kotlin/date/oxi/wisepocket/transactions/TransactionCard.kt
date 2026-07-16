@@ -1,5 +1,6 @@
 package date.oxi.wisepocket.transactions
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -7,6 +8,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -22,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import date.oxi.wisepocket.model.Category
@@ -54,24 +58,35 @@ fun TransactionCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = if (flagged && !expanded) {
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-        } else {
-            CardDefaults.cardColors()
-        },
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = if (flagged && !expanded) {
+                MaterialTheme.colorScheme.errorContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainer
+            }
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (flagged && !expanded) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            }
+        )
     ) {
         Column(
-            Modifier.clickable { expanded = !expanded }.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            Modifier.clickable { expanded = !expanded }.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 tx.categoryOrNull?.let {
-                    Text(it.emoji, Modifier.padding(end = 10.dp), style = MaterialTheme.typography.titleMedium)
+                    Text(it.emoji, Modifier.padding(end = 12.dp), style = MaterialTheme.typography.titleMedium)
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
                         tx.merchant.ifBlank { "(no description)" },
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                         maxLines = if (expanded) Int.MAX_VALUE else 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -81,11 +96,9 @@ fun TransactionCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                // Money in is mint, money out is plain: most rows are spending, so colouring those would
-                // colour everything and mean nothing. Tertiary, not primary — primary is white now.
                 Text(
                     "${formatSignedMoney(tx.amount)} ${tx.currency}",
-                    style = MaterialTheme.typography.titleSmall.merge(Mono),
+                    style = MaterialTheme.typography.titleMedium.merge(Mono).copy(fontWeight = FontWeight.Bold),
                     color = if (tx.amount < 0) {
                         MaterialTheme.colorScheme.onSurface
                     } else {
@@ -109,9 +122,23 @@ fun TransactionCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { expanded = false }) { Text("Done") }
-                    TextButton(onClick = onDelete) { Text("Delete") }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = onDelete,
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Delete")
+                    }
+                    Button(
+                        onClick = { expanded = false },
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text("Done")
+                    }
                 }
             }
         }
@@ -120,7 +147,7 @@ fun TransactionCard(
 
 @Composable
 private fun Editor(tx: Transaction, onUpdate: (Transaction) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
             value = tx.merchant,
             onValueChange = { onUpdate(tx.copy(merchant = it)) },
@@ -171,13 +198,13 @@ private fun Editor(tx: Transaction, onUpdate: (Transaction) -> Unit) {
 @Composable
 private fun CategoryPicker(tx: Transaction, onUpdate: (Transaction) -> Unit) {
     val selected = tx.categoryOrNull
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             "Category",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Category.entries.forEach { category ->
                 FilterChip(
                     selected = category == selected,

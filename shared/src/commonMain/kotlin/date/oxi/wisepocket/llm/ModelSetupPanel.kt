@@ -1,15 +1,20 @@
 package date.oxi.wisepocket.llm
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,6 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
@@ -42,25 +49,41 @@ fun ModelSetupPanel(
     onDownload: (url: String, token: String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
-        when (status) {
-            is ModelStatus.Checking -> {
-                CircularProgressIndicator()
-                Text("Looking for the model…", Modifier.padding(top = 12.dp))
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            when (status) {
+                is ModelStatus.Checking -> {
+                    CircularProgressIndicator(modifier = Modifier.size(40.dp))
+                    Text(
+                        "Looking for the model…",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                is ModelStatus.Downloading -> DownloadProgress(status)
+
+                is ModelStatus.Absent -> DownloadForm(message = null, onDownload = onDownload)
+                is ModelStatus.Failed -> DownloadForm(message = status.message, onDownload = onDownload)
+
+                is ModelStatus.Ready -> {
+                    Text(
+                        "✅ AI Model Ready",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
-
-            is ModelStatus.Downloading -> DownloadProgress(status)
-
-            // Nothing to report on a fresh install: not having the model yet isn't news, it's why you're here.
-            is ModelStatus.Absent -> DownloadForm(message = null, onDownload = onDownload)
-            is ModelStatus.Failed -> DownloadForm(message = status.message, onDownload = onDownload)
-
-            // Nothing to set up. Callers decide what to show instead — there's no sensible generic answer.
-            is ModelStatus.Ready -> Unit
         }
     }
 }
@@ -71,15 +94,14 @@ private fun DownloadProgress(status: ModelStatus.Downloading) {
     if (total != null && total > 0) {
         LinearProgressIndicator(
             progress = { status.downloadedBytes.toFloat() / total.toFloat() },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
         )
     } else {
-        LinearProgressIndicator(Modifier.fillMaxWidth())
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape))
     }
     Text(
         "Downloading… ${status.downloadedBytes / BYTES_PER_MB} MB",
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.padding(top = 12.dp),
+        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
     )
     Text(
         "You can keep using the app while this runs.",
@@ -91,22 +113,26 @@ private fun DownloadProgress(status: ModelStatus.Downloading) {
 
 @Composable
 private fun DownloadForm(message: String?, onDownload: (url: String, token: String?) -> Unit) {
-    // Saveable: a rotation mid-typing shouldn't discard a pasted URL and token.
     var url by rememberSaveable { mutableStateOf(DEFAULT_MODEL_URL) }
     var token by rememberSaveable { mutableStateOf("") }
     var advanced by rememberSaveable { mutableStateOf(false) }
 
-    // Only a real failure has something to say, and then it's genuinely an error.
     message?.let {
         Text(
             it,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Medium
         )
     }
-    Button(onClick = { onDownload(url, token.ifBlank { null }) }, enabled = url.isNotBlank()) {
-        Text("Download model (~1 GB)")
+    Button(
+        onClick = { onDownload(url, token.ifBlank { null }) },
+        enabled = url.isNotBlank(),
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Text("Download AI Model (~1 GB)", style = MaterialTheme.typography.labelLarge)
     }
     Text(
         "Qwen2.5-1.5B-Instruct, Apache-2.0 — no account needed. It runs entirely on this phone.",
@@ -114,8 +140,6 @@ private fun DownloadForm(message: String?, onDownload: (url: String, token: Stri
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
     )
-    // The URL and token fields are for a different person than the one who just wants the app to work, so
-    // they don't get to be the first thing anyone reads.
     Text(
         if (advanced) "Use the default" else "Use a different model",
         style = MaterialTheme.typography.labelLarge,
@@ -129,6 +153,7 @@ private fun DownloadForm(message: String?, onDownload: (url: String, token: Stri
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Model GGUF URL") },
             singleLine = true,
+            shape = MaterialTheme.shapes.medium
         )
         OutlinedTextField(
             value = token,
@@ -136,6 +161,7 @@ private fun DownloadForm(message: String?, onDownload: (url: String, token: Stri
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Auth token (only for gated hosts)") },
             singleLine = true,
+            shape = MaterialTheme.shapes.medium
         )
     }
 }
