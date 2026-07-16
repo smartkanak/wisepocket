@@ -11,6 +11,25 @@
 
 ---
 
+> *"Jangan bjak terpijak, biarlah bodoh bersuluh."*
+> — a Malay idiom: someone who thinks they're clever may stumble, while someone humble enough to keep asking
+> finds the way. That's what WisePocket is for — instead of guessing where your money went, you just **ask**.
+> Chat with an AI that knows your own spending and answers questions and gives advice grounded in it, with
+> every word of that conversation staying on your phone.
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/transactions.jpeg" alt="Transactions screen — spending summary and editable list"></td>
+    <td width="33%"><img src="docs/screenshots/chat.jpeg" alt="AI Assistant — on-device chat grounded in your transactions"></td>
+    <td width="33%"><img src="docs/screenshots/wrapped.jpeg" alt="Financial Wrapped — a swipeable spending story"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Transactions</b> — the editable list, with spent / income / saved at a glance.</td>
+    <td align="center"><b>Chat</b> — ask about your money; answers stream from a model running on the phone.</td>
+    <td align="center"><b>Wrapped</b> — a full-screen, swipeable story of where it went.</td>
+  </tr>
+</table>
+
 WisePocket turns a raw bank-statement PDF into something you can actually use: an editable transaction
 list, a set of spending insights, a swipeable *Financial Wrapped* story, and a chat that answers questions
 about your money. The defining constraint — the reason the project exists — is that the language model runs
@@ -21,15 +40,15 @@ describes what it does **today**, not a roadmap.
 
 ## What it does
 
-| | |
-|---|---|
-| **Import a statement** | Pick a PDF; it's parsed entirely on-device into transactions, with no per-bank templates. |
+|                            |                                                                                                                                                                  |
+|----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Import a statement**     | Pick a PDF; it's parsed entirely on-device into transactions, with no per-bank templates.                                                                        |
 | **Review before it lands** | Parsed rows appear in a dialog next to the statement lines they came from — fix, drop, or discard the whole import. Nothing reaches your data until you confirm. |
-| **Own the list** | Full CRUD: tap a row to edit inline, add one by hand, delete one, or wipe everything to start a fresh month. Backed by a real database, so it survives restarts. |
-| **Categorise spending** | The on-device model sorts transactions into a fixed set of categories. Every category is a tappable chip, so a wrong guess is one tap to fix. |
-| **See the insights** | Totals, spending-by-category, by-month, top merchants, biggest purchase, net saved — all computed in Kotlin, not by the model. |
-| **Financial Wrapped** | A full-screen, swipeable story built from those insights. A card only appears when its data exists. |
-| **Chat with your money** | Ask *"how much did I spend on groceries?"* and get a streamed answer, grounded in pre-computed figures so a 1.5B model can't fumble the arithmetic. |
+| **Own the list**           | Full CRUD: tap a row to edit inline, add one by hand, delete one, or wipe everything to start a fresh month. Backed by a real database, so it survives restarts. |
+| **Categorise spending**    | The on-device model sorts transactions into a fixed set of categories. Every category is a tappable chip, so a wrong guess is one tap to fix.                    |
+| **See the insights**       | Totals, spending-by-category, by-month, top merchants, biggest purchase, net saved — all computed in Kotlin, not by the model.                                   |
+| **Financial Wrapped**      | A full-screen, swipeable story built from those insights. A card only appears when its data exists.                                                              |
+| **Chat with your money**   | Ask *"how much did I spend on groceries?"* and get a streamed answer, grounded in pre-computed figures so a 1.5B model can't fumble the arithmetic.              |
 
 Everything above works **identically on Android and iOS**, from one `commonMain` codebase — including the
 Compose UI. There are no platform stubs; the only platform-specific code is the PDF text extractor and a
@@ -95,42 +114,29 @@ without a device. An architecture test (Konsist) enforces that purity: `statemen
 
 ## Tech stack
 
-| Area | Choice |
-|---|---|
-| **Language / platforms** | Kotlin 2.4, Kotlin Multiplatform → Android + iOS (`iosArm64`, `iosSimulatorArm64`) |
-| **UI** | Compose Multiplatform 1.11 (Material 3), shared in `commonMain` — one UI, both platforms |
-| **On-device LLM** | llama.cpp via Llamatik; GGUF models (default Qwen2.5-1.5B-Instruct) |
-| **PDF text** | pdfium (Android) · Apple PDFKit (iOS) — the pipeline's single platform seam |
-| **Persistence** | Room Multiplatform + KSP, bundled SQLite driver on native |
-| **Networking** | Ktor client (model download, streamed to disk via kotlinx-io) |
-| **DI** | Koin — started from the platform entry point, not a Compose scope |
-| **Navigation** | Jetpack Navigation for KMP, type-safe routes |
-| **Async** | Coroutines + Flow (streaming tokens, DAO Flows via `stateIn`) |
-| **Design system** | Hand-built palette around a single brand blue (`#1B1BD1`); Material 3 the *system*, not its colours |
-| **Quality gates** | detekt (no baseline — zero findings) + Konsist architecture tests, both on `check` |
+| Area                     | Choice                                                                                              |
+|--------------------------|-----------------------------------------------------------------------------------------------------|
+| **Language / platforms** | Kotlin 2.4, Kotlin Multiplatform → Android + iOS (`iosArm64`, `iosSimulatorArm64`)                  |
+| **UI**                   | Compose Multiplatform 1.11 (Material 3), shared in `commonMain` — one UI, both platforms            |
+| **On-device LLM**        | llama.cpp via Llamatik; GGUF models (default Qwen2.5-1.5B-Instruct)                                 |
+| **PDF text**             | pdfium (Android) · Apple PDFKit (iOS) — the pipeline's single platform seam                         |
+| **Persistence**          | Room Multiplatform + KSP, bundled SQLite driver on native                                           |
+| **Networking**           | Ktor client (model download, streamed to disk via kotlinx-io)                                       |
+| **DI**                   | Koin — started from the platform entry point, not a Compose scope                                   |
+| **Navigation**           | Jetpack Navigation for KMP, type-safe routes                                                        |
+| **Async**                | Coroutines + Flow (streaming tokens, DAO Flows via `stateIn`)                                       |
+| **Design system**        | Hand-built palette around a single brand blue (`#1B1BD1`); Material 3 the *system*, not its colours |
+| **Quality gates**        | detekt (no baseline — zero findings) + Konsist architecture tests, both on `check`                  |
 
 ## Architecture at a glance
 
-```
-┌───────────────────────── :shared (commonMain — Android + iOS) ─────────────────────────┐
-│                                                                                         │
-│  pdf/         extractPdfText  ← the ONE platform seam (pdfium / PDFKit)                  │
-│    ↓          layout reconstruction                                                     │
-│  statement/   tokens → profile detection → reconcile → (LLM only if undecidable)        │
-│    ↓                                                                                     │
-│  model/ · data/ (Room)   the transaction, and where it's stored                         │
-│    ↓                                                                                     │
-│  insights/    pure aggregates — every figure the app states, computed once, UI-free     │
-│    ↓                              ↘                                                      │
-│  chat/ (PromptBuilder → LLM)      wrapped/ (story cards)                                 │
-│                                                                                         │
-│  llm/   one llama.cpp engine, app-scoped, serialised   ·   di/ (Koin)   ·   ui/theme/   │
-│  transactions/ · review/ · onboarding/   ← Compose screens, shared                      │
-└─────────────────────────────────────────────────────────────────────────────────────────┘
-        ▲                                                                    ▲
-  :androidApp                                                            iosApp/
-  MainActivity → App()                                    MainViewController() → App()
-```
+Two thin platform hosts call the same `App()`. Everything below it is one shared codebase: a straight-line
+data pipeline (PDF → statement → store → insights → UI) alongside a cross-cutting rail — one on-device LLM
+engine, DI, navigation and the design system — with quality gates enforcing the boundaries.
+
+<div align="center">
+  <img src="docs/architecture.svg" alt="WisePocket architecture: two platform hosts over one shared codebase, with a PDF-to-UI data pipeline and a cross-cutting rail (one LLM engine, DI, navigation, theme) plus quality gates" width="900">
+</div>
 
 **Design decisions that shaped it:**
 
@@ -183,7 +189,8 @@ or side-load one during development.
 ```
 
 - **87 shared tests**, run on **both** the JVM and the iOS simulator — the parsing pipeline, categorisation,
-  insights, Wrapped story, prompt building and the stores are all covered without a device.
+  insights, Wrapped story, prompt building and the stores are all covered without a device. They run against
+  synthetic fixtures, never real statements: those are personal data and are kept out of the repository.
 - **detekt** with **no baseline file** — the tree sits at zero findings, so any new one is real.
 - **Konsist** pins the architecture the compiler can't: no per-bank branches, the `expect` seam stays
   narrow, the computing packages import no Compose, and no colour literals leak out of the theme. Every rule
@@ -196,6 +203,11 @@ or side-load one during development.
 
 ## License
 
-The default model (Qwen2.5-1.5B-Instruct) is Apache-2.0; the wordmark is set in
-[Rammetto One](https://fonts.google.com/specimen/Rammetto+One) (OFL-1.1). No real bank statements are in
-this repository — they're personal data and belong nowhere near it.
+WisePocket is released under the **[MIT License](LICENSE)** — use it, fork it, build on it.
+
+Third-party components keep their own terms:
+
+- **Default model** — [Qwen2.5-1.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct), Apache-2.0.
+- **Wordmark font** — [Rammetto One](https://fonts.google.com/specimen/Rammetto+One), OFL-1.1.
+- **Inference** — [llama.cpp](https://github.com/ggml-org/llama.cpp) (MIT) via
+  [Llamatik](https://github.com/ferranpons/llamatik).
