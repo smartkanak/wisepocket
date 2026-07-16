@@ -97,6 +97,40 @@ class ArchitectureTest {
     }
 
     /**
+     * **Colours are named in `ui/theme`, or in the Wrapped story, and nowhere else.**
+     *
+     * A design system is only a system while every screen gets its colour from the scheme. One
+     * `Color(0xFF…)` dropped into a screen is not a bug on its own — it's the way the scheme stops being
+     * the answer to "what colour is this?", and after a handful of them nobody can retheme the app or
+     * check a contrast ratio without reading every file. That failure is invisible in review, because each
+     * individual literal looks reasonable.
+     *
+     * `wrapped/` is exempt by design: the story is deliberately off-theme (see `WrappedScreen.palette`),
+     * and that contrast is the feature. The exemption is narrow and named, which is what keeps it from
+     * becoming the excuse.
+     */
+    @Test
+    fun coloursAreDefinedOnlyInTheThemeAndTheWrappedStory() {
+        // Konsist reports a file's name without its extension — same spelling as the expect rule above.
+        val allowed = setOf("WpColors", "Theme", "WrappedScreen")
+        val literal = Regex("""Color\(0x|Color\.(White|Black|Red|Green|Blue|Yellow|Cyan|Magenta|Gray)""")
+
+        val ui = production().files.filter { it.packagee?.name?.startsWith("date.oxi.wisepocket") == true }
+        kotlinAssertTrue(ui.isNotEmpty(), "matched no production files — the rule checks nothing")
+
+        val offenders = ui
+            .filterNot { it.name in allowed }
+            .filter { it.text.contains(literal) }
+            .map { it.name }
+
+        assertEquals(
+            emptyList(), offenders,
+            "Hardcoded colour outside $allowed. Take it from MaterialTheme.colorScheme — and if no role " +
+                "fits, the missing role belongs in Theme.kt, not in the screen.",
+        )
+    }
+
+    /**
      * **The parts that compute stay UI-free.** `statement`, `model` and `insights` are pure Kotlin.
      *
      * That purity is why the whole profile-detection story is unit-testable without a device, which is the

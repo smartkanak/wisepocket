@@ -3,7 +3,6 @@ package date.oxi.wisepocket
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -35,6 +34,7 @@ import date.oxi.wisepocket.review.ImportDialog
 import date.oxi.wisepocket.review.ImportViewModel
 import date.oxi.wisepocket.transactions.TransactionsScreen
 import date.oxi.wisepocket.transactions.TransactionsViewModel
+import date.oxi.wisepocket.ui.theme.WisePocketTheme
 import date.oxi.wisepocket.wrapped.WrappedScreen
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
@@ -64,7 +64,7 @@ private enum class TopLevel(val label: String, val route: Any, val routeClass: K
 @Composable
 @Preview
 fun App() {
-    MaterialTheme {
+    WisePocketTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             val transactionsViewModel: TransactionsViewModel = koinViewModel()
             val importViewModel: ImportViewModel = koinViewModel()

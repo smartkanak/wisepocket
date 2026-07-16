@@ -30,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import date.oxi.wisepocket.llm.ModelStatus
@@ -210,7 +211,9 @@ private fun SummaryHeader(transactions: List<Transaction>, onDeleteAll: () -> Un
     val income = transactions.filter { it.amount > 0 }.sumOf { it.amount }
     val net = income - spent
 
-    Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
+    // Deeper than the canvas, not lighter: the header is the thing the list scrolls *over*, so it reads as
+    // set back rather than raised.
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -234,12 +237,14 @@ private fun SummaryHeader(transactions: List<Transaction>, onDeleteAll: () -> Un
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Figure("Spent", formatMoney(spent), Modifier.weight(1f))
-                Figure("Income", formatMoney(income), Modifier.weight(1f))
+                Figure("Income", formatMoney(income), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary)
+                // Saved and overspent are the same figure with opposite meanings, so colour is the only
+                // thing that tells them apart at a glance — the label is read second, if at all.
                 Figure(
                     label = if (net >= 0) "Saved" else "Overspent",
                     value = formatMoney(if (net >= 0) net else -net),
                     modifier = Modifier.weight(1f),
-                    highlight = true,
+                    color = if (net >= 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,
                 )
             }
         }
@@ -265,19 +270,21 @@ private fun OverflowMenu(onDeleteAll: () -> Unit) {
     }
 }
 
+/** One figure in the header. [color] defaults to plain body white — spending needs no colour to explain it. */
 @Composable
-private fun Figure(label: String, value: String, modifier: Modifier = Modifier, highlight: Boolean = false) {
+private fun Figure(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+) {
     Column(modifier) {
         Text(
             label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(
-            value,
-            style = MaterialTheme.typography.titleMedium,
-            color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-        )
+        Text(value, style = MaterialTheme.typography.titleMedium, color = color)
     }
 }
 

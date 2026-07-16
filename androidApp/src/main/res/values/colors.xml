@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+    <!--
+      The brand blue, duplicated from WpColors.Brand in commonMain — and it has to be.
+
+      This colour is needed before a single line of Kotlin runs: it's the window background the system
+      paints while the Activity starts, which is the only thing standing between the user and a white
+      flash on every cold launch. Compose cannot supply it, because Compose isn't there yet.
+
+      If WpColors.Brand ever changes, change it here too. There is no way to make the compiler check that.
+    -->
+    <color name="brand">#1B1BD1</color>
+</resources>

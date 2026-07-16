@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+    <!--
+      The launch theme, and nothing more — every pixel after the first frame is Compose's.
+
+      Two jobs. It sets the window background to the brand blue so a cold start opens *into* the app
+      instead of flashing white first; the stock Theme.Material.Light.NoActionBar it replaces made that
+      flash inevitable, and it only became obvious once the app itself stopped being white. And it is a
+      dark parent, because the app's canvas is dark whatever the system thinks — a light parent hands the
+      framework the wrong default for anything it draws before or around us.
+    -->
+    <style name="Theme.WisePocket" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/brand</item>
+    </style>
+</resources>

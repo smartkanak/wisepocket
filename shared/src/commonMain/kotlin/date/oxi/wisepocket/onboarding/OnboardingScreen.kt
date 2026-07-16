@@ -1,5 +1,6 @@
 package date.oxi.wisepocket.onboarding
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,10 +14,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import date.oxi.wisepocket.llm.ModelSetupPanel
 import date.oxi.wisepocket.llm.ModelStatus
+import org.jetbrains.compose.resources.painterResource
+import wisepocket.shared.generated.resources.Res
+import wisepocket.shared.generated.resources.wordmark
 
 /**
  * First run: what this app is, and the one thing it needs to be good at its job.
@@ -49,12 +54,24 @@ fun OnboardingScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
     ) {
-        Text(if (firstRun) "👛" else "🤖", style = MaterialTheme.typography.displayMedium)
-        Text(
-            if (firstRun) "WisePocket" else "Set up the on-device AI",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center,
-        )
+        // The wordmark stands in for both the emoji and the name on first run: this is the one screen whose
+        // job is to say what the app *is*, and a logo does that better than a 👛 and a line of body type.
+        // Coming back later to fetch the model is not an introduction, so that pass keeps the plain heading.
+        if (firstRun) {
+            Image(
+                painter = painterResource(Res.drawable.wordmark),
+                contentDescription = "WisePocket",
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
+                modifier = Modifier.fillMaxWidth(0.7f).padding(bottom = 8.dp),
+            )
+        } else {
+            Text("🤖", style = MaterialTheme.typography.displayMedium)
+            Text(
+                "Set up the on-device AI",
+                style = MaterialTheme.typography.headlineMedium,
+                textAlign = TextAlign.Center,
+            )
+        }
         if (firstRun) {
             Text(
                 "Turn your bank statements into a picture of your money — and chat with them.",

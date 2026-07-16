@@ -4,5 +4,23 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!--
+	  The iOS half of "the canvas is dark, whatever the system thinks".
+
+	  Same bug Android's enableEdgeToEdge(auto) had, in Apple's dialect: by default iOS tints the status bar
+	  from the trait collection, so a light-mode iPhone draws a black clock onto the blue. Taking the
+	  decision away from the view controllers and stating it once is the whole fix — the app has exactly one
+	  appearance, so there is nothing for a controller to decide.
+	-->
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleLightContent</string>
+	<!-- Opens into the brand blue rather than flashing white. The counterpart of android:windowBackground. -->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>Brand</string>
+	</dict>
 </dict>
 </plist>

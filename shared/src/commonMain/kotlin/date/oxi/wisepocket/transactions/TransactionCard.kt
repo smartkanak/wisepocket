@@ -22,13 +22,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import date.oxi.wisepocket.model.Category
 import date.oxi.wisepocket.model.Transaction
 import date.oxi.wisepocket.model.categoryOrNull
 import date.oxi.wisepocket.model.formatSignedMoney
+import date.oxi.wisepocket.ui.theme.Mono
 import kotlinx.datetime.LocalDate
 
 /**
@@ -81,13 +81,15 @@ fun TransactionCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // Money in is mint, money out is plain: most rows are spending, so colouring those would
+                // colour everything and mean nothing. Tertiary, not primary — primary is white now.
                 Text(
                     "${formatSignedMoney(tx.amount)} ${tx.currency}",
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleSmall.merge(Mono),
                     color = if (tx.amount < 0) {
                         MaterialTheme.colorScheme.onSurface
                     } else {
-                        MaterialTheme.colorScheme.primary
+                        MaterialTheme.colorScheme.tertiary
                     },
                 )
             }
@@ -103,7 +105,7 @@ fun TransactionCard(
                     )
                     Text(
                         sourceLine,
-                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        style = MaterialTheme.typography.bodySmall.merge(Mono),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }

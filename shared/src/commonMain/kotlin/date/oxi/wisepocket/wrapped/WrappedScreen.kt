@@ -253,19 +253,28 @@ private fun Dots(count: Int, selected: Int, modifier: Modifier = Modifier) {
 /**
  * Card backgrounds, cycled by position.
  *
- * Hardcoded rather than taken from the Material scheme, deliberately: a Wrapped is meant to look nothing
- * like the rest of the app — that contrast is the whole feature. All text on these is white, so the
- * gradients stay dark enough to carry it.
+ * Still hardcoded, and still deliberately outside the Material scheme: a Wrapped is meant to look nothing
+ * like the rest of the app — that contrast is the whole feature, and a story that obeyed the app's theme
+ * would just be the app with bigger text.
+ *
+ * What changed with the design system is that these are now a *family* rather than six unrelated Material
+ * hues. Every pair travels through blue-violet and ends deep, so the story reads as somewhere the app could
+ * plausibly have taken you — the old teal→green and orange→rust pairs shared nothing with `#1B1BD1` or with
+ * each other. The brand blue itself appears exactly once, as the last card's opening: the story leaves you
+ * where the app begins.
+ *
+ * All text on these is white, so every stop stays dark enough to carry it — that constraint is what rules
+ * out the bright cyans and magentas this family otherwise invites.
  */
 private fun palette(page: Int): Pair<Color, Color> = PALETTE[page % PALETTE.size]
 
 private val PALETTE = listOf(
-    Color(0xFF6A1B9A) to Color(0xFF283593),
-    Color(0xFF00695C) to Color(0xFF1B5E20),
-    Color(0xFFAD1457) to Color(0xFF6A1B9A),
-    Color(0xFFE65100) to Color(0xFFBF360C),
-    Color(0xFF0277BD) to Color(0xFF01579B),
-    Color(0xFF4527A0) to Color(0xFF1A237E),
+    Color(0xFF3A0CA3) to Color(0xFF1B1BD1), // violet → brand
+    Color(0xFF0353A4) to Color(0xFF012A4A), // azure → navy
+    Color(0xFF6D28D9) to Color(0xFF2410A8), // purple → indigo
+    Color(0xFF0E7490) to Color(0xFF0A2A5E), // teal → deep blue
+    Color(0xFFA21CAF) to Color(0xFF4C1D95), // magenta → violet
+    Color(0xFF1B1BD1) to Color(0xFF0A0A4F), // brand → midnight
 )
 
 private const val SUBTLE = 0.75f

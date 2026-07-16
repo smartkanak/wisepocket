@@ -137,18 +137,28 @@ private fun ChatBody(
     }
 }
 
+/**
+ * One message.
+ *
+ * Both colours are stated rather than left to `contentColorFor`: several roles deliberately share a colour
+ * in this scheme (white is `primary` *and* `primaryContainer`), so resolving a content colour from a
+ * container colour alone is ambiguous by construction. The user is white-on-blue, the assistant is
+ * white-on-raised-blue — the two speakers are told apart by weight of surface, not by hue.
+ */
 @Composable
 private fun MessageBubble(msg: ChatMessage) {
     val isUser = msg.role == ChatMessage.Role.USER
-    val bubbleColor =
-        if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+    val scheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
     ) {
         Card(
-            colors = CardDefaults.cardColors(containerColor = bubbleColor),
-            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isUser) scheme.primaryContainer else scheme.surfaceContainerHigh,
+                contentColor = if (isUser) scheme.onPrimaryContainer else scheme.onSurface,
+            ),
+            shape = MaterialTheme.shapes.medium,
         ) {
             Text(
                 text = msg.text.ifEmpty { "…" },

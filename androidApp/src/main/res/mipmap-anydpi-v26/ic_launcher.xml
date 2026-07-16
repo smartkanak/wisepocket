@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The adaptive icon. Three layers, and the third is the one that's easy to forget:
+
+  `monochrome` is what Android 13+ tints for themed icons. Without it a launcher falls back to the full
+  colour tile, so a user who has themed icons switched on gets one icon that ignores their wallpaper — and
+  it's invisible to everyone who hasn't switched that setting on, which is why it goes missing.
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
 </adaptive-icon>
