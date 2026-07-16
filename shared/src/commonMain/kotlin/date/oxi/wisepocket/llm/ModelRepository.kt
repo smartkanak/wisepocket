@@ -35,9 +35,6 @@ class ModelRepository(
 
     private fun exists(path: String): Boolean = SystemFileSystem.metadataOrNull(Path(path))?.isRegularFile == true
 
-    /** True if the model file is already present on disk. */
-    fun isPresent(): Boolean = exists(modelPath)
-
     /**
      * Checks for the model and, when [downloadUrl] is non-null, downloads it if missing.
      * Emits status updates; terminates with [ModelStatus.Ready] or [ModelStatus.Failed].

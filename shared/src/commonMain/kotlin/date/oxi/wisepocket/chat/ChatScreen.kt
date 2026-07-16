@@ -35,11 +35,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import date.oxi.wisepocket.llm.ModelStatus
+import date.oxi.wisepocket.model.Transaction
 
 @Composable
-fun ChatScreen(modifier: Modifier = Modifier) {
+fun ChatScreen(
+    transactions: List<Transaction>,
+    modifier: Modifier = Modifier,
+) {
     val vm: ChatViewModel = viewModel { ChatViewModel() }
     val state by vm.state.collectAsStateWithLifecycle()
+
+    LaunchedEffect(transactions) { vm.setTransactions(transactions) }
 
     Column(
         modifier = modifier
@@ -53,6 +59,11 @@ fun ChatScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.padding(vertical = 8.dp),
         )
 
+        if (transactions.isEmpty()) {
+            NothingToTalkAbout(Modifier.weight(1f))
+            return@Column
+        }
+
         when (val status = state.modelStatus) {
             is ModelStatus.Ready -> ChatBody(
                 state = state,
@@ -65,6 +76,19 @@ fun ChatScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.weight(1f),
             )
         }
+    }
+}
+
+/** No transactions means nothing to ground an answer in — better to say so than to invent one. */
+@Composable
+private fun NothingToTalkAbout(modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+        Text(
+            "Import a statement first — then ask me anything about your spending.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

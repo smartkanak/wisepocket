@@ -29,8 +29,6 @@ interface LlmEngine {
      */
     fun generate(system: String, context: String, user: String): Flow<String>
 
-    /** Releases native resources. */
-    fun close()
 }
 
 private class LlamatikLlmEngine(private val modelPath: String) : LlmEngine {
@@ -113,9 +111,6 @@ private class LlamatikLlmEngine(private val modelPath: String) : LlmEngine {
         awaitClose { worker.cancel() }
     }
 
-    override fun close() {
-        LlamaBridge.shutdown()
-    }
 }
 
 fun createLlmEngine(modelPath: String): LlmEngine = LlamatikLlmEngine(modelPath)

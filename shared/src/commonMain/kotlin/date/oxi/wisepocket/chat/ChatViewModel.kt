@@ -2,13 +2,9 @@ package date.oxi.wisepocket.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import date.oxi.wisepocket.data.MockTransactions
-import date.oxi.wisepocket.llm.LlmEngine
-import date.oxi.wisepocket.llm.ModelRepository
+import date.oxi.wisepocket.llm.LlmProvider
 import date.oxi.wisepocket.llm.ModelStatus
-import date.oxi.wisepocket.llm.createLlmEngine
 import date.oxi.wisepocket.model.Transaction
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,59 +19,43 @@ data class ChatUiState(
 
 /**
  * Drives the chat slice: provisions the on-device GGUF model, then runs the streaming
- * prompt → response loop grounded in the (mock) transactions via [LlmEngine] (llama.cpp / Llamatik).
+ * prompt → response loop grounded in the user's transactions via the on-device engine.
  */
-class ChatViewModel(
-    private val transactions: List<Transaction> = MockTransactions.sample,
-    private val modelRepository: ModelRepository = ModelRepository(fileName = DEFAULT_MODEL_FILE),
-) : ViewModel() {
+class ChatViewModel : ViewModel() {
 
     private val _state = MutableStateFlow(ChatUiState())
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
 
-    private var engine: LlmEngine? = null
+    /**
+     * What the chat is allowed to talk about. Held as state rather than a constructor arg so importing
+     * doesn't recreate the ViewModel — that would drop the loaded engine and force a model reload.
+     *
+     * An empty list is a real value, not "no update": rows the user deleted have to stop being answerable.
+     */
+    private var transactions: List<Transaction> = emptyList()
+
+    fun setTransactions(newTransactions: List<Transaction>) {
+        transactions = newTransactions
+    }
 
     init {
-        collectProvisioning(modelRepository.ensureModel())
+        viewModelScope.launch {
+            LlmProvider.status.collect { _state.value = _state.value.copy(modelStatus = it) }
+        }
+        viewModelScope.launch { LlmProvider.ensure() }
     }
 
     /** Retry provisioning by downloading the model from [url] (with optional [authToken] for gated hosts). */
     fun startDownload(url: String, authToken: String? = null) {
         val trimmed = url.trim()
         if (trimmed.isEmpty()) return
-        collectProvisioning(modelRepository.ensureModel(trimmed, authToken?.ifBlank { null }))
-    }
-
-    private fun collectProvisioning(flow: Flow<ModelStatus>) {
-        viewModelScope.launch {
-            flow.collect { status ->
-                // Defer surfacing Ready until the engine has actually initialized (see initEngine).
-                if (status is ModelStatus.Ready) initEngine(status.path)
-                else _state.value = _state.value.copy(modelStatus = status)
-            }
-        }
-    }
-
-    private fun initEngine(modelPath: String) {
-        viewModelScope.launch {
-            val e = createLlmEngine(modelPath)
-            runCatching { e.initialize() }
-                .onSuccess {
-                    engine = e
-                    _state.value = _state.value.copy(modelStatus = ModelStatus.Ready(modelPath))
-                }
-                .onFailure {
-                    _state.value = _state.value.copy(
-                        modelStatus = ModelStatus.Failed(it.message ?: "Engine init failed"),
-                    )
-                }
-        }
+        viewModelScope.launch { LlmProvider.ensure(trimmed, authToken?.ifBlank { null }) }
     }
 
     fun send(userText: String) {
         val text = userText.trim()
         if (text.isEmpty() || _state.value.isGenerating) return
-        val activeEngine = engine ?: return
+        val activeEngine = LlmProvider.engineOrNull() ?: return
 
         val history = _state.value.messages
         val userMsg = ChatMessage(ChatMessage.Role.USER, text)
@@ -89,7 +69,12 @@ class ChatViewModel(
         viewModelScope.launch {
             val builder = StringBuilder()
             activeEngine.generate(system = PromptBuilder.SYSTEM, context = context, user = text)
-                .catch { e -> builder.append("\n[error: ${e.message}]") }
+                .catch { e ->
+                    // catch() emits nothing downstream, so collect never runs again — the error has to be
+                    // written to the UI here, or the user watches an empty bubble forever.
+                    builder.append("\n[error: ${e.message}]")
+                    updateLastAssistant(visibleAnswer(builder.toString()))
+                }
                 .collect { chunk ->
                     builder.append(chunk)
                     updateLastAssistant(visibleAnswer(builder.toString()))
@@ -119,12 +104,4 @@ class ChatViewModel(
         }
     }
 
-    override fun onCleared() {
-        engine?.close()
-        engine = null
-    }
-
-    private companion object {
-        const val DEFAULT_MODEL_FILE = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
-    }
 }

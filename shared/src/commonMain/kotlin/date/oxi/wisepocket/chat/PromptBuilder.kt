@@ -1,8 +1,7 @@
 package date.oxi.wisepocket.chat
 
 import date.oxi.wisepocket.model.Transaction
-import kotlin.math.abs
-import kotlin.math.roundToLong
+import date.oxi.wisepocket.model.formatMoney
 
 /** A single turn in the chat. */
 data class ChatMessage(
@@ -84,9 +83,5 @@ object PromptBuilder {
 
     private const val RECENT_LIMIT = 8
 
-    private fun money(value: Double): String {
-        val cents = (abs(value) * 100).roundToLong()
-        val sign = if (value < 0) "-" else ""
-        return "$sign${cents / 100}.${(cents % 100).toString().padStart(2, '0')}"
-    }
+    private fun money(value: Double): String = formatMoney(value)
 }

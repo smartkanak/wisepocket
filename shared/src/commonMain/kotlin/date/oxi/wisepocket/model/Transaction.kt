@@ -4,8 +4,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
 /**
- * A single bank-statement line item. For this MVP slice these come from [date.oxi.wisepocket.data.MockTransactions];
- * a later slice will populate them from parsed PDF statements.
+ * A single bank-statement line item — parsed from an imported PDF, or added by hand.
  *
  * @param amount negative for spending (debits), positive for income (credits), in [currency] major units.
  */
