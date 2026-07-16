@@ -44,13 +44,14 @@ actual suspend fun extractPdfText(bytes: ByteArray): PdfDocText = withContext(Di
     val result = PdfDocText(pages)
     println("$LOG extracted ${result.charCount} chars from ${pages.size} pages")
     if (result.charCount == 0) {
-        throw PdfExtractionException(
-            "This PDF has no extractable text — it's probably a scan. WisePocket can't read scanned statements yet.",
-        )
+        throw PdfExtractionException(NO_TEXT_MESSAGE)
     }
     result
 }
 
+// The two `continue`s skip whitespace (its position is carried on the next char instead) and glyphs with
+// no usable box. Both are the point of the loop, not clutter to refactor away.
+@Suppress("LoopWithTooManyJumpStatements", "ReturnCount")
 @OptIn(ExperimentalForeignApi::class)
 private fun readPage(page: PDFPage, index: Int): PdfPageText? {
     // The media box can sit at a non-zero origin and character bounds are reported in that same space, so
@@ -108,8 +109,8 @@ private fun readPage(page: PDFPage, index: Int): PdfPageText? {
  *
  * Both were measured on the sample statements, and the obvious choice is the wrong one:
  *
- * - `characterBounds(at:)` returns a **zero-size rect** for a sizeable minority of characters. Dropping those deletes letters
- *   mid-word and digits out of amounts.
+ * - `characterBounds(at:)` returns a **zero-size rect** for a sizeable minority of characters. Dropping
+ *   those deletes letters mid-word and digits out of amounts.
  * - Backing it up with selections only for the failures is worse still, because the two APIs return
  *   *differently shaped* boxes: `characterBounds` gives a tight glyph outline (heights 4.4–5.9 on one
  *   line), while a selection gives the **full line height** (10.9 for every character on that same line).

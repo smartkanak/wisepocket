@@ -1,0 +1,44 @@
+# Layered on top of detekt's own defaults (buildUponDefaultConfig = true), so this file records only
+# where WisePocket deliberately differs — upstream rules keep applying as they evolve.
+#
+# The bar for an entry here: the default rule is wrong *for this codebase*, and the reason is written
+# down. Anything we merely couldn't be bothered to fix belongs in the code, not in this file.
+
+coroutines:
+  InjectDispatcher:
+    # The rule assumes a DI container to swap a dispatcher in from. WisePocket has none by design, and the
+    # three sites it flags are the two engine seams and the PDF extractor — places where "run this off the
+    # main thread" is part of the contract, not a choice a caller should be able to make wrong.
+    active: false
+
+complexity:
+  LongMethod:
+    # Compose builds UI by nesting calls, so a screen is one long declarative expression. Splitting it to
+    # satisfy a line count buys nothing; real complexity is caught by CyclomaticComplexMethod instead.
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    # A Composable's parameters are its API surface (state in, callbacks out) — a long list is the
+    # idiom, not a smell.
+    ignoreAnnotated: ['Composable']
+
+naming:
+  FunctionNaming:
+    # @Composable functions are PascalCase by Compose convention — this is the single biggest source of
+    # false positives in any Compose codebase (39 of our 129 initial findings).
+    ignoreAnnotated: ['Composable']
+  MatchingDeclarationName:
+    # KMP `actual` files are named <Expect>.<platform>.kt by convention, which never matches the single
+    # top-level declaration inside. The convention is the compiler's, not ours.
+    excludes: ['**/androidMain/**', '**/iosMain/**']
+
+style:
+  MagicNumber:
+    # Compose layout constants (padding, weights, sizes) read better inline than hoisted to names like
+    # PADDING_16 — the number *is* the meaning.
+    ignoreAnnotated: ['Composable']
+  ReturnCount:
+    # Bail-out-early is the house style in the parsing pipeline, and detekt's own excludeGuardClauses only
+    # recognises the leading `if (x) return` form — most of ours are mid-body elvis returns, one per thing
+    # that can legitimately not be there. The alternative is nesting, which reads worse.
+    max: 6
+    excludeGuardClauses: true

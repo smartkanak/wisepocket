@@ -1,6 +1,7 @@
 package date.oxi.wisepocket.pdf
 
 import date.oxi.wisepocket.llm.AndroidAppContext
+import io.legere.pdfiumandroid.PdfTextPage
 import io.legere.pdfiumandroid.PdfiumCore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -8,10 +9,13 @@ import kotlinx.coroutines.withContext
 private const val LOG = "WP-PDF"
 
 /**
- * pdfium-backed extraction. pdfium is the same engine Chrome uses for PDFs, and the same one the iOS
- * side will bind via cinterop — one engine on both platforms, so the layout heuristics only get tuned
- * once.
+ * pdfium-backed extraction — the same engine Chrome renders PDFs with.
+ *
+ * iOS deliberately uses a *different* engine (PDFKit); see the iOS actual for why matching pdfium there
+ * isn't practical. That's safe because this seam only has to produce characters and boxes — [LayoutText]
+ * turns those into lines and columns in commonMain, identically for both.
  */
+@Suppress("TooGenericExceptionCaught") // pdfium reports every failure as a bare Exception across JNI.
 actual suspend fun extractPdfText(bytes: ByteArray): PdfDocText = withContext(Dispatchers.Default) {
     val context = AndroidAppContext.context
         ?: error("initWisePocketAndroid(context) must be called before importing PDFs")
@@ -28,7 +32,7 @@ actual suspend fun extractPdfText(bytes: ByteArray): PdfDocText = withContext(Di
             val page = doc.openPage(pageIndex) ?: return@mapNotNull null
             page.use {
                 val height = page.getPageHeightPoint().toFloat()
-                val textPage = page.openTextPage() ?: return@mapNotNull null
+                val textPage = page.openTextPage()
                 textPage.use {
                     PdfPageText(
                         index = pageIndex,
@@ -42,9 +46,7 @@ actual suspend fun extractPdfText(bytes: ByteArray): PdfDocText = withContext(Di
         val result = PdfDocText(pages)
         println("$LOG extracted ${result.charCount} chars from ${pages.size} pages")
         if (result.charCount == 0) {
-            throw PdfExtractionException(
-                "This PDF has no extractable text — it's probably a scan. WisePocket can't read scanned statements yet.",
-            )
+            throw PdfExtractionException(NO_TEXT_MESSAGE)
         }
         result
     } finally {
@@ -52,7 +54,10 @@ actual suspend fun extractPdfText(bytes: ByteArray): PdfDocText = withContext(Di
     }
 }
 
-private fun readChars(textPage: io.legere.pdfiumandroid.PdfTextPage, pageHeight: Float): List<PdfChar> {
+// The two `continue`s skip whitespace (its position is carried on the next char instead) and glyphs with
+// no usable box. Both are the point of the loop, not clutter to refactor away.
+@Suppress("LoopWithTooManyJumpStatements")
+private fun readChars(textPage: PdfTextPage, pageHeight: Float): List<PdfChar> {
     val count = textPage.textPageCountChars()
     if (count <= 0) return emptyList()
 

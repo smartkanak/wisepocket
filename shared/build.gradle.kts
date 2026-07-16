@@ -19,7 +19,7 @@ kotlin {
         }
     }
     
-    androidLibrary {
+    android {
        namespace = "date.oxi.wisepocket.shared"
        compileSdk = libs.versions.android.compileSdk.get().toInt()
        minSdk = libs.versions.android.minSdk.get().toInt()
@@ -66,9 +66,33 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
         }
+        // Konsist is a JVM-only library, so the architecture tests live in the one JVM test source set we
+        // have. That costs nothing in coverage: Konsist reads .kt files off disk rather than off the
+        // classpath, so from here it still sees commonMain, iosMain and androidApp alike.
+        getByName("androidHostTest").dependencies {
+            implementation(libs.konsist)
+        }
     }
 }
 
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
+}
+
+/**
+ * Every .kt file in this module, analysed exactly once.
+ *
+ * Wiring this by hand is not optional: `check` on its own only reaches the bare `detekt` task, which is
+ * NO-SOURCE in a KMP project — it would go green having analysed nothing at all.
+ *
+ * detekt derives a task per KMP source set, and those overlap heavily — `nativeMain`, `appleMain`,
+ * `iosArm64Main` and `iosSimulatorArm64Main` would each re-analyse the same iosMain files (they're the
+ * only ones holding any). These three are the minimal set with full coverage:
+ *
+ *  - detektMainAndroid     → commonMain + androidMain, *with* type resolution
+ *  - detektHostTestAndroid → commonTest + androidHostTest, with type resolution
+ *  - detektIosMainSourceSet → iosMain (detekt has no type resolution for Native targets)
+ */
+tasks.named("check") {
+    dependsOn("detektMainAndroid", "detektHostTestAndroid", "detektIosMainSourceSet")
 }

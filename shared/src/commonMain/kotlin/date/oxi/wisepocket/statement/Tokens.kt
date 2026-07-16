@@ -43,21 +43,28 @@ object Tokens {
         fun find(line: String): List<DateToken> =
             pattern.findAll(line).map { DateToken(it.value, it.range.first, this) }.toList()
 
-        /** Resolves a match to a date. [statementYear] is only consulted for [DMY_NO_YEAR]. */
+        /** Resolves a match to a date. [statementDate] is only consulted for [DMY_NO_YEAR]. */
         fun parse(text: String, statementDate: LocalDate?): LocalDate? {
-            val m = pattern.find(text) ?: return null
-            val g = m.groupValues
+            val match = pattern.find(text) ?: return null
+            // Destructuring names the capture groups, which is why the group order differs per format
+            // below rather than being indexed by number.
             return runCatching {
                 when (this) {
-                    DMY_DOT, DMY_DASH, DMY_SLASH -> LocalDate(g[3].toInt(), g[2].toInt(), g[1].toInt())
-                    ISO -> LocalDate(g[1].toInt(), g[2].toInt(), g[3].toInt())
+                    DMY_DOT, DMY_DASH, DMY_SLASH -> {
+                        val (day, month, year) = match.destructured
+                        LocalDate(year.toInt(), month.toInt(), day.toInt())
+                    }
+                    ISO -> {
+                        val (year, month, day) = match.destructured
+                        LocalDate(year.toInt(), month.toInt(), day.toInt())
+                    }
                     DMY_NO_YEAR -> {
                         val ref = statementDate ?: return null
-                        val month = g[2].toInt()
+                        val (day, month) = match.destructured
                         // A row dated later in the year than the statement itself belongs to the previous
                         // year: a January statement legitimately carries December rows.
-                        val year = if (month > ref.month.number) ref.year - 1 else ref.year
-                        LocalDate(year, month, g[1].toInt())
+                        val year = if (month.toInt() > ref.month.number) ref.year - 1 else ref.year
+                        LocalDate(year, month.toInt(), day.toInt())
                     }
                 }
             }.getOrNull()
@@ -77,7 +84,8 @@ object Tokens {
         //   as an amount quietly wrecks every total.
         // - the currency group carries its own optional space rather than a leading \s*, which would eat
         //   the space before a Soll/Haben marker and silently drop the "S" in "19,34 S".
-        """(?<![\d.,])([-+]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}|[-+]?\d+[.,]\d{2})(?![\d.,])(?:\s*(?:€|EUR|\$))?(?:\s+[SH]\b)?""",
+        """(?<![\d.,])([-+]?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}|[-+]?\d+[.,]\d{2})(?![\d.,])""" +
+            """(?:\s*(?:€|EUR|\$))?(?:\s+[SH]\b)?""",
     )
 
     fun amounts(line: String): List<AmountToken> =

@@ -9,6 +9,9 @@ import kotlin.time.TimeSource
 
 private const val LOG = "WP-PDF"
 
+/** How much of the model's reply to echo into the log — enough to debug a bad answer, not a wall of text. */
+private const val LOG_PREVIEW_CHARS = 120
+
 /**
  * Asks the on-device model the one thing a statement can leave genuinely undecidable: **how it marks
  * money leaving the account**, when it states no balance to reconcile against and carries no sign markers.
@@ -42,7 +45,7 @@ class LlmProfiler(private val engine: LlmEngine) {
         val reply = StringBuilder()
         engine.generate(system = systemPrompt(options), context = sample.joinToString("\n"), user = USER)
             .collect { reply.append(it) }
-        println("$LOG LLM profile took ${started.elapsedNow()}: ${reply.toString().take(120)}")
+        println("$LOG LLM profile took ${started.elapsedNow()}: ${reply.toString().take(LOG_PREVIEW_CHARS)}")
 
         val chosen = readSign(reply.toString(), options) ?: return null
         return candidates.first { it.signConvention == chosen }

@@ -96,6 +96,9 @@ object GenericParser {
         return result.net
     }
 
+    /** Half a cent: closer than this and two money sums are the same figure, bar double rounding. */
+    private const val CENT_TOLERANCE = 0.005
+
     /** Cent-level comparison — these are money sums built from doubles, so exact equality won't do. */
-    fun matches(a: Double, b: Double): Boolean = abs(a - b) < 0.005
+    fun matches(a: Double, b: Double): Boolean = abs(a - b) < CENT_TOLERANCE
 }

@@ -62,11 +62,17 @@ object ProfileDetector {
      * Language-agnostic-ish balance markers. German statements dominate our samples; the words are a
      * hint, not a requirement — a document that doesn't match simply gets no free verification.
      */
-    private val OPENING = Regex("""(?:alter|Alter|Vortrag|opening|Opening|previous|Previous)[^\n]{0,30}?(?:Kontostand|[Ss]aldo|[Bb]alance)""")
-    private val CLOSING = Regex("""(?:neuer|Neuer|new|New|closing|Closing)[^\n]{0,30}?(?:Kontostand|[Ss]aldo|[Bb]alance)""")
+    private val OPENING = Regex(
+        """(?:alter|Alter|Vortrag|opening|Opening|previous|Previous)[^\n]{0,30}?(?:Kontostand|[Ss]aldo|[Bb]alance)""",
+    )
+    private val CLOSING = Regex(
+        """(?:neuer|Neuer|new|New|closing|Closing)[^\n]{0,30}?(?:Kontostand|[Ss]aldo|[Bb]alance)""",
+    )
 
     /** `erstellt am 30.06.2020`, `Datum: 01.06.2019` — anything that dates the document itself. */
-    private val STATEMENT_DATE = Regex("""(?:erstellt am|Datum|Date|created|vom)\D{0,10}(\d{2}[.\-/]\d{2}[.\-/]\d{4})""")
+    private val STATEMENT_DATE = Regex(
+        """(?:erstellt am|Datum|Date|created|vom)\D{0,10}(\d{2}[.\-/]\d{2}[.\-/]\d{4})""",
+    )
 
     fun detect(lines: List<String>): Detection {
         val hints = readBalances(lines)

@@ -19,6 +19,14 @@ object LayoutText {
     /** Fallback column width (points) when a page has no usable character boxes. */
     private const val FALLBACK_UNIT = 5f
 
+    /**
+     * Smallest left-to-left step counted as a real advance (points).
+     *
+     * Filters out characters stacked at the same x — overlapping glyphs and zero-width marks would
+     * otherwise drag the median advance toward zero and collapse every column.
+     */
+    private const val MIN_ADVANCE = 0.1f
+
     fun linesOf(page: PdfPageText): List<String> {
         val chars = page.chars.filter { it.width > 0f && it.height > 0f }
         if (chars.isEmpty()) return emptyList()
@@ -39,11 +47,11 @@ object LayoutText {
      */
     private fun columnUnit(lines: List<List<PdfChar>>): Float {
         val advances = lines.flatMap { line ->
-            line.sortedBy { it.left }.zipWithNext { a, b -> b.left - a.left }.filter { it > 0.1f }
+            line.sortedBy { it.left }.zipWithNext { a, b -> b.left - a.left }.filter { it > MIN_ADVANCE }
         }.sorted()
         if (advances.isEmpty()) return FALLBACK_UNIT
         val median = advances[advances.size / 2]
-        return if (median > 0.1f) median else FALLBACK_UNIT
+        return if (median > MIN_ADVANCE) median else FALLBACK_UNIT
     }
 
     /**
@@ -61,31 +69,30 @@ object LayoutText {
      */
     private fun groupIntoLines(chars: List<PdfChar>): List<List<PdfChar>> {
         val sorted = chars.sortedBy { it.top }
+        // The line being built is always the last one in `lines`, so there is no separate `current` to keep
+        // in sync and no leftover to flush after the loop.
         val lines = mutableListOf<MutableList<PdfChar>>()
-        var current = mutableListOf<PdfChar>()
         var bandTop = 0f
         var bandBottom = 0f
 
         for (c in sorted) {
-            if (current.isEmpty()) {
-                current.add(c)
-                bandTop = c.top
-                bandBottom = c.bottom
-                continue
+            val current = lines.lastOrNull()
+            val overlap = if (current == null) {
+                Float.NEGATIVE_INFINITY
+            } else {
+                minOf(c.bottom, bandBottom) - maxOf(c.top, bandTop)
             }
-            val overlap = minOf(c.bottom, bandBottom) - maxOf(c.top, bandTop)
-            if (overlap >= c.height * OVERLAP_FRACTION) {
+
+            if (current != null && overlap >= c.height * OVERLAP_FRACTION) {
                 current.add(c)
                 bandTop = minOf(bandTop, c.top)
                 bandBottom = maxOf(bandBottom, c.bottom)
             } else {
-                lines.add(current)
-                current = mutableListOf(c)
+                lines.add(mutableListOf(c))
                 bandTop = c.top
                 bandBottom = c.bottom
             }
         }
-        if (current.isNotEmpty()) lines.add(current)
         return lines
     }
 

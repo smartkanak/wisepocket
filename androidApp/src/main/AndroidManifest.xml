@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--
+      The only thing WisePocket ever reaches the network for is downloading the GGUF model, once, from a
+      URL the user pastes in. Nothing about a statement or a transaction leaves the device — inference is
+      entirely local, which is the whole point of the app.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

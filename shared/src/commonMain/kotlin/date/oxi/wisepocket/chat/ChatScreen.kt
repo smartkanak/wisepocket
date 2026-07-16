@@ -131,7 +131,8 @@ private fun ChatBody(
 @Composable
 private fun MessageBubble(msg: ChatMessage) {
     val isUser = msg.role == ChatMessage.Role.USER
-    val bubbleColor = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+    val bubbleColor =
+        if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,

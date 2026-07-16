@@ -19,8 +19,10 @@ data class ChatMessage(
 object PromptBuilder {
 
     const val SYSTEM = "You are WisePocket, a friendly on-device personal-finance assistant. " +
-        "Answer ONLY from the context. Amounts are in the stated currency; negative means money spent, positive means received. " +
-        "The figures are pre-computed: categories are ranked largest-first, totals include net savings, and the most recent " +
+        "Answer ONLY from the context. Amounts are in the stated currency; " +
+        "negative means money spent, positive means received. " +
+        "The figures are pre-computed: categories are ranked largest-first, " +
+        "totals include net savings, and the most recent " +
         "purchase is given explicitly. Use those numbers directly — never re-add or re-sort them yourself. " +
         "Be concise, playful but professional. If the data doesn't cover the question, say so."
 
@@ -48,7 +50,7 @@ object PromptBuilder {
      * long prompts, so we sum in code and keep the token count low (only [RECENT_LIMIT] raw lines).
      */
     fun renderTransactions(transactions: List<Transaction>): String = buildString {
-        val currency = transactions.firstOrNull()?.currency ?: ""
+        val currency = transactions.firstOrNull()?.currency.orEmpty()
 
         // Categories ranked largest-first and numbered, so "biggest"/"top N" become a lookup.
         appendLine("SPENDING BY CATEGORY (largest first):")
@@ -68,7 +70,9 @@ object PromptBuilder {
         // Precompute the most recent *purchase* (exclude income) so the model doesn't grab the wrong line.
         transactions.filter { it.amount < 0 }.maxByOrNull { it.date }?.let { p ->
             appendLine()
-            appendLine("MOST RECENT PURCHASE: ${p.merchant}, ${money(p.amount)} ${p.currency}, ${p.date} (${p.category ?: "Uncategorized"})")
+            appendLine(
+                "MOST RECENT PURCHASE: ${p.merchant}, ${money(p.amount)} ${p.currency}, ${p.date} (${p.categoryLabel})",
+            )
         }
 
         val recent = transactions.sortedByDescending { it.date }.take(RECENT_LIMIT)
@@ -76,12 +80,15 @@ object PromptBuilder {
             appendLine()
             appendLine("RECENT TRANSACTIONS (newest first):")
             recent.forEach { t ->
-                append("- ${t.date} | ${t.merchant} | ${money(t.amount)} ${t.currency} | ${t.category ?: "Uncategorized"}\n")
+                append("- ${t.date} | ${t.merchant} | ${money(t.amount)} ${t.currency} | ${t.categoryLabel}\n")
             }
         }
     }
 
     private const val RECENT_LIMIT = 8
+
+    /** One spelling of "no category", so the summary and the recent-lines can't disagree. */
+    private val Transaction.categoryLabel: String get() = category ?: "Uncategorized"
 
     private fun money(value: Double): String = formatMoney(value)
 }

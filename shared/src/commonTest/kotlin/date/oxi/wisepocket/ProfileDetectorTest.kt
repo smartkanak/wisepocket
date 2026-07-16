@@ -9,6 +9,7 @@ import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -155,8 +156,9 @@ class ProfileDetectorTest {
 
         val detection = ProfileDetector.detect(lines)
         assertFalse(detection.isAmbiguous, "candidates: ${detection.candidates}")
-        assertEquals(Amounts.SignConvention.EXPLICIT_MINUS, detection.profile!!.signConvention)
-        assertEquals(Amounts.NumberFormat.ANGLO, detection.profile!!.numberFormat)
+        val profile = assertNotNull(detection.profile)
+        assertEquals(Amounts.SignConvention.EXPLICIT_MINUS, profile.signConvention)
+        assertEquals(Amounts.NumberFormat.ANGLO, profile.numberFormat)
     }
 
     @Test

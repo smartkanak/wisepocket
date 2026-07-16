@@ -42,6 +42,9 @@ class ModelRepository(
      * @param downloadUrl direct URL to the GGUF file; null means "only check, don't download".
      * @param authToken optional bearer token for license-gated hosts.
      */
+    // A multi-GB download over a user-supplied URL fails in more ways than we can name — network, disk,
+    // a wrong token, an HTML error page served as a GGUF. All of them mean the same thing to the user.
+    @Suppress("TooGenericExceptionCaught")
     fun ensureModel(downloadUrl: String? = null, authToken: String? = null): Flow<ModelStatus> = flow {
         emit(ModelStatus.Checking)
         val target = modelPath
@@ -50,7 +53,11 @@ class ModelRepository(
             return@flow
         }
         if (downloadUrl == null) {
-            emit(ModelStatus.Failed("Model not found at $target. Side-load a GGUF model or paste a download URL below."))
+            emit(
+                ModelStatus.Failed(
+                    "Model not found at $target. Side-load a GGUF model or paste a download URL below.",
+                ),
+            )
             return@flow
         }
         val client = httpClientFactory()

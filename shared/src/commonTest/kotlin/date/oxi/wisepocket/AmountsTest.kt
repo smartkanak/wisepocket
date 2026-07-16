@@ -16,7 +16,10 @@ class AmountsTest {
     @Test
     fun germanFormatParsesCommaDecimalAndDotThousands() {
         assertEquals(-0.09, Amounts.parse("-0,09", NumberFormat.GERMAN, SignConvention.EXPLICIT_MINUS))
-        assertEquals(1315.60, Amounts.parse("1.315,60", NumberFormat.GERMAN, SignConvention.PLUS_MEANS_INCOME)?.let { -it })
+        assertEquals(
+            1315.60,
+            Amounts.parse("1.315,60", NumberFormat.GERMAN, SignConvention.PLUS_MEANS_INCOME)?.let { -it },
+        )
     }
 
     @Test

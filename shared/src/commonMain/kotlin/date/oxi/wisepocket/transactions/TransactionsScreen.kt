@@ -84,12 +84,13 @@ private fun SummaryHeader(transactions: List<Transaction>) {
     Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Your transactions", style = MaterialTheme.typography.titleLarge)
+            // Both ends come from one pass over a list we've already checked is non-empty, so there is no
+            // nullable case left to force with `!!`.
+            val range = transactions.map { it.date }.sorted()
+                .let { dates -> dates.firstOrNull()?.let { " · $it – ${dates.last()}" } }
+                .orEmpty()
             Text(
-                "${transactions.size} transaction${if (transactions.size == 1) "" else "s"}" +
-                    (transactions.minByOrNull { it.date }?.let { first ->
-                        val last = transactions.maxByOrNull { it.date }!!
-                        " · ${first.date} – ${last.date}"
-                    } ?: ""),
+                "${transactions.size} transaction${if (transactions.size == 1) "" else "s"}$range",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -46,3 +46,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 }
+
+// Explicit on purpose: `check` otherwise only runs the bare `detekt` task, which has no source under AGP
+// (the real work lives in the variant-aware tasks) and would silently pass while analysing nothing.
+// detektMain covers production code across all variants with type resolution.
+tasks.named("check") {
+    dependsOn("detektMain")
+}

@@ -39,6 +39,13 @@ data class PdfDocText(val pages: List<PdfPageText>) {
 class PdfExtractionException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
 /**
+ * Shown when a PDF yields no characters at all. Lives here rather than in each actual so the two engines
+ * can't drift into telling the user different stories about the same situation.
+ */
+internal const val NO_TEXT_MESSAGE =
+    "This PDF has no extractable text — it's probably a scan. WisePocket can't read scanned statements yet."
+
+/**
  * Extracts every character with its position from [bytes].
  *
  * Text-based PDFs only — a scanned statement yields no characters and callers should treat an empty

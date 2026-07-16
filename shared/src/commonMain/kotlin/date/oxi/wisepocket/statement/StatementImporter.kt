@@ -38,6 +38,10 @@ class StatementImporter(
      */
     private val engineProvider: () -> LlmEngine? = { null },
 ) {
+    // The outermost boundary of the import: whatever a PDF engine, a regex or the model throws, the user
+    // gets a message and the app stays up. Enumerating the types would only mean the next unlisted one
+    // crashes them.
+    @Suppress("TooGenericExceptionCaught")
     suspend fun import(bytes: ByteArray): ImportResult {
         val started = TimeSource.Monotonic.markNow()
         return try {
