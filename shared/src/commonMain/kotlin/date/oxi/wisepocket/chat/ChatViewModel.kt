@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import date.oxi.wisepocket.llm.LlmProvider
 import date.oxi.wisepocket.llm.ModelStatus
 import date.oxi.wisepocket.model.Transaction
+import date.oxi.wisepocket.transactions.TransactionStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,47 +16,52 @@ data class ChatUiState(
     val modelStatus: ModelStatus = ModelStatus.Checking,
     val messages: List<ChatMessage> = emptyList(),
     val isGenerating: Boolean = false,
+    /** Whether there is anything to ground an answer in. The chat has nothing to say without it. */
+    val hasTransactions: Boolean = false,
 )
 
 /**
  * Drives the chat slice: provisions the on-device GGUF model, then runs the streaming
  * prompt → response loop grounded in the user's transactions via the on-device engine.
  */
-class ChatViewModel : ViewModel() {
+class ChatViewModel(
+    private val llm: LlmProvider,
+    transactionStore: TransactionStore,
+) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatUiState())
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
 
     /**
-     * What the chat is allowed to talk about. Held as state rather than a constructor arg so importing
-     * doesn't recreate the ViewModel — that would drop the loaded engine and force a model reload.
-     *
-     * An empty list is a real value, not "no update": rows the user deleted have to stop being answerable.
+     * What the chat is allowed to talk about — read from the store rather than handed down from the UI, so
+     * a deleted row stops being answerable without a screen having to remember to say so.
      */
     private var transactions: List<Transaction> = emptyList()
 
-    fun setTransactions(newTransactions: List<Transaction>) {
-        transactions = newTransactions
-    }
-
     init {
         viewModelScope.launch {
-            LlmProvider.status.collect { _state.value = _state.value.copy(modelStatus = it) }
+            transactionStore.transactions.collect {
+                transactions = it
+                _state.value = _state.value.copy(hasTransactions = it.isNotEmpty())
+            }
         }
-        viewModelScope.launch { LlmProvider.ensure() }
+        viewModelScope.launch {
+            llm.status.collect { _state.value = _state.value.copy(modelStatus = it) }
+        }
+        viewModelScope.launch { llm.ensure() }
     }
 
     /** Retry provisioning by downloading the model from [url] (with optional [authToken] for gated hosts). */
     fun startDownload(url: String, authToken: String? = null) {
         val trimmed = url.trim()
         if (trimmed.isEmpty()) return
-        viewModelScope.launch { LlmProvider.ensure(trimmed, authToken?.ifBlank { null }) }
+        viewModelScope.launch { llm.ensure(trimmed, authToken?.ifBlank { null }) }
     }
 
     fun send(userText: String) {
         val text = userText.trim()
         if (text.isEmpty() || _state.value.isGenerating) return
-        val activeEngine = LlmProvider.engineOrNull() ?: return
+        val activeEngine = llm.engineOrNull() ?: return
 
         val history = _state.value.messages
         val userMsg = ChatMessage(ChatMessage.Role.USER, text)

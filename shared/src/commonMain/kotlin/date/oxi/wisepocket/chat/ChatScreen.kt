@@ -33,19 +33,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import date.oxi.wisepocket.llm.ModelStatus
-import date.oxi.wisepocket.model.Transaction
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun ChatScreen(
-    transactions: List<Transaction>,
-    modifier: Modifier = Modifier,
-) {
-    val vm: ChatViewModel = viewModel { ChatViewModel() }
+fun ChatScreen(modifier: Modifier = Modifier) {
+    val vm: ChatViewModel = koinViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
-
-    LaunchedEffect(transactions) { vm.setTransactions(transactions) }
 
     Column(
         modifier = modifier
@@ -59,7 +53,7 @@ fun ChatScreen(
             modifier = Modifier.padding(vertical = 8.dp),
         )
 
-        if (transactions.isEmpty()) {
+        if (!state.hasTransactions) {
             NothingToTalkAbout(Modifier.weight(1f))
             return@Column
         }

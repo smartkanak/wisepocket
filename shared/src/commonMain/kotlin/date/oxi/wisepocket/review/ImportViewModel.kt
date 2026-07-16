@@ -41,15 +41,17 @@ sealed interface ImportUiState {
  * the user already trusts.
  */
 class ImportViewModel(
-    // Shares the app's single engine, so a statement that can't self-verify gets the model's judgement on
-    // its conventions instead of a hardcoded guess.
-    private val importer: StatementImporter = StatementImporter(engineProvider = LlmProvider::engineOrNull),
+    // The importer is built around the app's single engine (see appModule), so a statement that can't
+    // self-verify gets the model's judgement on its conventions instead of a hardcoded guess.
+    private val importer: StatementImporter,
+    private val transactionStore: TransactionStore,
+    llm: LlmProvider,
 ) : ViewModel() {
 
     init {
         // Kick off provisioning: import may be the first screen the user touches, and the LLM step needs
         // a loaded engine. No-op if the chat already started it.
-        viewModelScope.launch { LlmProvider.ensure() }
+        viewModelScope.launch { llm.ensure() }
     }
 
     private val _state = MutableStateFlow<ImportUiState>(ImportUiState.Idle)
@@ -87,7 +89,7 @@ class ImportViewModel(
     /** Accepts the reviewed rows into the user's data and closes the import. */
     fun confirm() {
         val review = _state.value as? ImportUiState.Review ?: return
-        TransactionStore.addAll(review.rows.map { it.transaction })
+        transactionStore.addAll(review.rows.map { it.transaction })
         _state.value = ImportUiState.Idle
     }
 

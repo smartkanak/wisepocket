@@ -15,17 +15,17 @@ private const val LOG = "WP-LLM"
  * The app's single on-device model: provisions it once and hands the same engine to everything that needs
  * it — the chat, and statement import's profiling step.
  *
- * App-scoped rather than owned by a ViewModel, for two reasons that are really one:
+ * Registered as a Koin `single` in [date.oxi.wisepocket.di.appModule], and that scope is not a detail:
  * [com.llamatik.library.platform.LlamaBridge] is a singleton over native llama.cpp state, so a second
  * engine wouldn't be a second model — it would be the same native context being loaded and shut down
  * underneath the first. And loading a ~1 GB GGUF twice is not something to do by accident.
  */
-object LlmProvider {
+class LlmProvider(private val repository: ModelRepository) {
 
-    /** Default model: Qwen2.5-1.5B-Instruct, Apache-2.0 and ungated, so no token is needed. */
-    const val DEFAULT_MODEL_FILE = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
-
-    private val repository = ModelRepository(fileName = DEFAULT_MODEL_FILE)
+    companion object {
+        /** Default model: Qwen2.5-1.5B-Instruct, Apache-2.0 and ungated, so no token is needed. */
+        const val DEFAULT_MODEL_FILE = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
+    }
 
     private val _status = MutableStateFlow<ModelStatus>(ModelStatus.Checking)
     val status: StateFlow<ModelStatus> = _status.asStateFlow()

@@ -16,6 +16,12 @@ dependencies {
 
     implementation(libs.androidx.activity.compose)
 
+    // The Android entry point starts the shared object graph, so it needs Koin itself — :shared depends on
+    // it with `implementation`, which deliberately doesn't leak onto consumers' compile classpaths.
+    implementation(project.dependencies.platform(libs.koin.bom))
+    implementation(libs.koin.core)
+    implementation(libs.koin.android)
+
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
 }

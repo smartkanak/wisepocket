@@ -72,10 +72,15 @@ class ArchitectureTest {
      * This is what makes the two PDF engines safe. Android runs pdfium and iOS runs PDFKit, and that is
      * only tolerable because all they must agree on is characters and boxes — the moment `expect` spreads,
      * the two platforms can start reading the same statement differently.
+     *
+     * `WisePocketDatabase` is listed but is not a seam: Room requires an `expect object` constructor on
+     * non-Android targets and generates every `actual` itself, so there is no platform code behind it.
+     * Note what is *not* here — the database's file path genuinely differs per platform, and it stays out
+     * of this list because the Koin platform modules carry it instead.
      */
     @Test
-    fun expectDeclarationsOnlyExistInTheThreeKnownSeams() {
-        val allowed = setOf("PdfText", "PdfPicker", "ModelStorage")
+    fun expectDeclarationsOnlyExistInTheKnownSeams() {
+        val allowed = setOf("PdfText", "PdfPicker", "ModelStorage", "WisePocketDatabase")
         val scope = production()
 
         val offenders = buildList {

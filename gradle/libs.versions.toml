@@ -8,8 +8,11 @@ androidx-lifecycle = "2.11.0"
 composeMultiplatform = "1.11.1"
 detekt = "2.0.0-alpha.5"
 konsist = "0.17.3"
+koin = "4.2.2"
 kotlin = "2.4.10"
+ksp = "2.3.10"
 material3 = "1.11.0-alpha07"
+navigationCompose = "2.9.2"
 kotlinxCoroutines = "1.11.0"
 kotlinxSerialization = "1.11.0"
 kotlinxDatetime = "0.8.0"
@@ -17,6 +20,8 @@ kotlinxIo = "0.9.1"
 ktor = "3.5.1"
 llamatik = "1.9.0"
 pdfiumAndroid = "2.0.2"
+room = "2.8.4"
+sqlite = "2.7.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -38,8 +43,18 @@ kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.re
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
+koin-core = { module = "io.insert-koin:koin-core" }
+koin-android = { module = "io.insert-koin:koin-android" }
+koin-compose = { module = "io.insert-koin:koin-compose" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel" }
+koin-test = { module = "io.insert-koin:koin-test" }
 konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
 llamatik = { module = "com.llamatik:library", version.ref = "llamatik" }
+navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 pdfium-android = { module = "io.legere:pdfiumandroid", version.ref = "pdfiumAndroid" }
 
 [plugins]
@@ -50,3 +65,5 @@ composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "k
 detekt = { id = "dev.detekt", version.ref = "detekt" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinxSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room = { id = "androidx.room", version.ref = "room" }

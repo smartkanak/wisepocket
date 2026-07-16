@@ -9,22 +9,35 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import date.oxi.wisepocket.chat.ChatScreen
+import date.oxi.wisepocket.navigation.ChatRoute
+import date.oxi.wisepocket.navigation.TransactionsRoute
 import date.oxi.wisepocket.pdf.rememberPdfPicker
 import date.oxi.wisepocket.review.ImportDialog
 import date.oxi.wisepocket.review.ImportViewModel
 import date.oxi.wisepocket.transactions.TransactionStore
 import date.oxi.wisepocket.transactions.TransactionsScreen
+import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
+import kotlin.reflect.KClass
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -32,40 +45,48 @@ import kotlin.time.ExperimentalTime
 @OptIn(ExperimentalTime::class)
 private fun today() = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
+/** The tabs, and the destination each one stands for. */
+private enum class TopLevel(val label: String, val route: Any, val routeClass: KClass<*>) {
+    TRANSACTIONS("Transactions", TransactionsRoute, TransactionsRoute::class),
+    CHAT("Chat", ChatRoute, ChatRoute::class),
+}
+
 @Composable
 @Preview
 fun App() {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            val importViewModel: ImportViewModel = viewModel { ImportViewModel() }
-            val importState by importViewModel.state.collectAsState()
-            val transactions by TransactionStore.transactions.collectAsState()
-            var tab by remember { mutableStateOf(0) }
+            val importViewModel: ImportViewModel = koinViewModel()
+            val store: TransactionStore = koinInject()
+            val importState by importViewModel.state.collectAsStateWithLifecycle()
+            val transactions by store.transactions.collectAsStateWithLifecycle()
             var newlyAddedId by remember { mutableStateOf<String?>(null) }
+
+            val navController = rememberNavController()
+            val scope = rememberCoroutineScope()
 
             val pickPdf = rememberPdfPicker { bytes ->
                 if (bytes != null) importViewModel.import(bytes)
             }
 
             Column(Modifier.fillMaxSize().safeContentPadding()) {
-                PrimaryTabRow(selectedTabIndex = tab) {
-                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Transactions") })
-                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Chat") })
-                }
-                when (tab) {
-                    0 -> TransactionsScreen(
-                        transactions = transactions,
-                        onUpdate = TransactionStore::update,
-                        onDelete = TransactionStore::remove,
-                        onAdd = {
-                            newlyAddedId = TransactionStore.addBlank(today())
-                        },
-                        onImport = pickPdf,
-                        newlyAddedId = newlyAddedId,
-                    )
-                    // Falls back to the mock statement while the user has no data of their own, so the
-                    // chat still has something to talk about on a fresh install.
-                    else -> ChatScreen(transactions = transactions)
+                TopLevelTabs(navController)
+                NavHost(
+                    navController = navController,
+                    startDestination = TransactionsRoute,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    composable<TransactionsRoute> {
+                        TransactionsScreen(
+                            transactions = transactions,
+                            onUpdate = store::update,
+                            onDelete = store::remove,
+                            onAdd = { scope.launch { newlyAddedId = store.addBlank(today()) } },
+                            onImport = pickPdf,
+                            newlyAddedId = newlyAddedId,
+                        )
+                    }
+                    composable<ChatRoute> { ChatScreen() }
                 }
             }
 
@@ -80,6 +101,33 @@ fun App() {
                     importViewModel.discard()
                     pickPdf()
                 },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TopLevelTabs(navController: NavHostController) {
+    val entry by navController.currentBackStackEntryAsState()
+    val current = entry?.destination
+    val selected = TopLevel.entries
+        .indexOfFirst { top -> current?.hierarchy?.any { it.hasRoute(top.routeClass) } == true }
+        .coerceAtLeast(0)
+
+    PrimaryTabRow(selectedTabIndex = selected) {
+        TopLevel.entries.forEachIndexed { index, top ->
+            Tab(
+                selected = selected == index,
+                onClick = {
+                    navController.navigate(top.route) {
+                        // Switching tabs replaces rather than stacks: without this, hopping between the two
+                        // builds a back stack the user then has to press Back through to leave the app.
+                        popUpTo(TransactionsRoute) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                text = { Text(top.label) },
             )
         }
     }
